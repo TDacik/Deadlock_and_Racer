@@ -1,0 +1,8 @@
+# SV-COMP functions for modeling of atomic sequences
+#
+# Author: Tomas Dacik (idacik@fit.vut.cz), 2024
+
+Atomic:
+  sequence-start: ["__VERIFIER_atomic_begin", "__verifier_atomic_begin"]
+  sequence-end: ["__VERIFIER_atomic_end", "__verifier_atomic_end"]
+  functions: ["__VERIFIER_atomic.*", "__verifier_atomic"]

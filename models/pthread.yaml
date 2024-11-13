@@ -1,72 +1,95 @@
-Locking:
-        
-  types: ["pthread_mutex_t", "pthread_spinlock_t"]
+# POSIX threads
+#
+# Author: Tomas Dacik (idacik@fit.vut.cz), 2024
 
-  blocking-lock:
-    
-    - function: "pthread_mutex_lock"
-      lock-position: 0
-
-    - function: "pthread_spin_lock"
-      lock-position: 0
-
-  non-blocking-lock:
-    
-    - function: "pthread_mutex_trylock"
-      lock-position: 0
-
-    - function: "pthread_mutex_timedlock"
-      lock-position: 0
-
-    - function: "pthread_spin_trylock"
-      lock-position: 0
-
-  unlock:
-
-    - function: "pthread_mutex_unlock"
-      lock-position: 0
-
-    - function: "pthread_spin_unlock"
-      lock-position: 0
+Locks:
+  types: ["pthread_mutex_t", "pthread_spinlock_t", "pthread_rwlock_t"]
 
   init:
-
     - function: "pthread_mutex_init"
       lock-position: 0
-
-    - function: "pthread_spin_init"
+    - function: "pthread_spin_lock"
+      lock-position: 0
+    - function: "pthread_rwlock_init"
       lock-position: 0
 
   destroy:
-
     - function: "pthread_mutex_destroy"
       lock-position: 0
-
     - function: "pthread_spin_destroy"
+      lock-position: 0
+    - function: "pthread_rwlock_destroy"
+      lock-position: 0
+
+  lock:
+    - function: "pthread_mutex_lock"
+      lock-position: 0
+      blocking: true
+      read-lock: false
+      reentrant: false
+    - function: "pthread_spin_lock"
+      lock-position: 0
+      blocking: true
+      read-lock: false
+      reentrant: false
+    - function: "pthread_mutex_trylock"
+      lock-position: 0
+      blocking: false
+      read-lock: false
+      reentrant: false
+    - function: "pthread_mutex_timedlock"
+      lock-position: 0
+      blocking: false
+      read-lock: false
+      reentrant: false
+    - function: "pthread_spin_trylock"
+      lock-position: 0
+      blocking: false
+      read-lock: false
+      reentrant: false
+    - function: "pthread_rwlock_rdlock"
+      lock-position: 0
+      blocking: true
+      read-lock: true
+      reentrant: false
+    - function: "pthread_rwlock_wrlock"
+      lock-position: 0
+      blocking: true
+      read-lock: false
+      reentrant: false
+    - function: "pthread_rwlock_tryrdlock"
+      lock-position: 0
+      blocking: false
+      read-lock: true
+      reentrant: false
+    - function: "pthread_rwlock_trywrlock"
+      lock-position: 0
+      blocking: false
+      read-lock: false
+      reentrant: false
+
+  unlock:
+    - function: "pthread_mutex_unlock"
+      lock-position: 0
+    - function: "pthread_spin_unlock"
+      lock-position: 0
+    - function: "pthread_rwlock_unlock"
       lock-position: 0
 
 Conditions:
-
   types: ["pthread_cond_t"]
-
   wait:
-
     - function: "pthread_cond_wait"
       condition-position: 0
       lock-position: 1
 
 Threads:
-
   types: ["pthread_t"]
-
   create:
-
     - function: "pthread_create"
       thread-id-position: 0
       entry-point-position: 2
       argument-position: 3
-
   join:
-
     - function: "pthread_join"
       thread-id-position: 0

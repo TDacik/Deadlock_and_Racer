@@ -1,0 +1,6 @@
+# GCC built-in atomic functions
+#
+# Author: Tomas Dacik (idacik@fit.vut.cz), 2024
+
+Atomic:
+  functions: ["__sync.*", "__atomic.*"]

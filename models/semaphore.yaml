@@ -1,0 +1,26 @@
+# POSIX semaphores (modeled as reentrant locks)
+#
+# Author: Tomas Dacik (idacik@fit.vut.cz), 2024
+
+Locks:
+  types: ["sem_t"]
+  init:
+    - function: "sem_init"
+      lock-position: 0
+  destroy:
+    - function: "sem_destroy"
+      lock-position: 0
+  lock:
+    - function: "sem_wait"
+      lock-position: 0
+      blocking: true
+      read-lock: false
+      reentrant: true
+    - function: "sem_trywait"
+      lock-position: 0
+      blocking: false
+      read-lock: false
+      reentrant: true
+  unlock:
+    - function: "sem_post"
+      lock-position: 0
