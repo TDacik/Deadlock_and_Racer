@@ -1,0 +1,60 @@
+(library
+  (name deadlock_core)
+  (public_name frama-c-deadlock.core)
+  (flags -open Frama_c_kernel :standard)
+  (libraries
+    frama-c.kernel
+    frama-c-inout.core
+    frama-c-eva.core
+    frama-c-alias.core
+    batteries
+    yojson
+
+    ; SV witnesses
+    yaml
+    uuidm
+    sha
+  )
+
+  (preprocess (pps ppx_compare))
+  (modules_without_implementation ValueAnalysis_sig datatype_sig powerset_sig)
+)
+
+(plugin
+  (optional)
+  (package frama-c-deadlock)
+  (name deadlock-main)
+  (libraries frama-c-deadlock.core)
+  (site (frama-c plugins))
+)
+
+(plugin
+  (optional)
+  (package frama-c-racer)
+  (name racer-main)
+  (libraries frama-c-deadlock.core)
+  (site (frama-c plugins))
+)
+
+;; Move concurrency models to shared directory of Frama-C
+;; TODO: ccore package
+(install
+  (package frama-c-racer)
+  (section (site (frama-c share)))
+  (files (glob_files (models/*.yaml with_prefix "cc/models")))
+)
+
+
+(env
+    (dev
+        (flags (:standard -w -8    ; Partial pattern-matching
+                          -w -32   ; Unused value declaration
+                          -w -26   ; Unused var
+                          -w -27   ; Unused var strict
+                          -g
+                )
+        )
+    )
+)
+
+(include_subdirs unqualified)

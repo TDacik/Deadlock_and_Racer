@@ -1,0 +1,171 @@
+(* TODO: merge with thread-graph
+ *
+ * Author: Tomas Dacik (idacik@fit.vut.cz), 2024 *)
+
+open Cil_datatype
+
+module M = Map.Make(Thread)
+
+module Callstack = RelaxedCallstack
+
+module StatementMap = struct
+
+  include Map.Make(struct
+    type t = Stmt.t [@@deriving compare]
+  end)
+
+  let find_or_empty stmt self =
+    try find stmt self
+    with Not_found -> Thread.Set.empty
+
+end
+
+type t = {
+  main : Thread.t;
+  thread_graph : ThreadGraph.t;
+  create_stmts : Stmt.t list M.t;             (** Maping of threads to their create statements. *)
+  initial_states : Thread.InitialState.t M.t;
+
+  (* Mapping from statements to their active threads *)
+  active_threads : Thread.Set.t StatementMap.t;
+
+  (* Mapping from threads to all threads which can run in parallel *)
+  parallel_threads : Thread.Set.t M.t;
+
+  (* Base which can be surely used to join the thread. *)
+
+  thread_ids : ExpStructEq.Set.t M.t;
+
+  (* All considered create statements, only for internal use. *)
+  all_create_stmts : Stmt.t list;
+
+  escaped_bases : Base.t list;
+}
+
+let compare res1 res2 =
+  let states1 = M.bindings res1.initial_states |> List.map snd in
+  let states2 = M.bindings res2.initial_states |> List.map snd in
+  List.compare Thread.InitialState.compare states1 states2
+
+let equal res1 res2 = (compare res1 res2) = 0
+
+let reachable_create_stmts self =
+  List.concat_map snd @@ M.bindings self.create_stmts
+
+let get_create_stmts thread res = M.find thread res.create_stmts
+
+let get_thread_list self = ThreadGraph.fold_vertex List.cons self.thread_graph []
+
+let get_edges self = ThreadGraph.fold_edges_e List.cons self.thread_graph []
+
+let is_unique res thread =
+  if Thread.is_main thread then true
+  else match get_create_stmts thread res with
+    | [s] -> CFG_utils.is_unique_stmt s
+    | _ :: _ -> false
+
+(* TODO: why set? *)
+let find_by_id_opt res id =
+  M.fold (fun thread set acc -> match acc with
+    | Some res -> acc
+    | None when ExpStructEq.Set.mem id set -> Some thread
+    | _ -> None
+  ) res.thread_ids None
+
+let show_thread_list self =
+  M.bindings self.parallel_threads
+  |> List.map (fun (t ,_) -> Thread.show t)
+  |> String.concat "\n  "
+  |> (fun s -> Format.asprintf "Threads:\n  %s" s)
+
+let show_create_stmts stmts =
+  List.fold_left (fun acc stmt ->
+    Format.asprintf "%s\n\t\t\t%a"
+      acc
+      Core0.pretty_stmt stmt
+  ) "\t\tCreated at:" stmts
+
+let show_threads self =
+  M.fold (fun thread state str ->
+    Format.asprintf "%s\n\t * %s (info: %s, ids: %a):\n %s\n %s"
+      str
+      (Thread.show thread)
+      (if is_unique self thread then "unique" else "multiple")
+      ExpStructEq.Set.pretty (M.find thread self.thread_ids)
+      (show_create_stmts @@ M.find thread self.create_stmts)
+      (Thread.InitialState.show state)
+  ) self.initial_states ""
+
+let show_stmt_summaries res =
+  StatementMap.fold (fun stmt threads acc ->
+    Format.asprintf "%s\n\t (%a) ↦  %s"
+      acc
+      Core0.pretty_stmt stmt
+      (Thread.Set.show threads)
+  ) res.active_threads ""
+
+let pp_short fmt self =
+  Format.fprintf fmt "Thread graph:%s" @@ ThreadGraph.show self.thread_graph
+
+let pp fmt self =
+  Format.fprintf fmt "STMTs: \n%s\n\n G: %a\n\n Parallel threads: %s\n\n Initial states: %s\n\n Escaped bases:%s"
+    (String.concat "\t\n"
+     @@ List.map (fun s -> Format.asprintf "- %a" Core0.pretty_stmt s) (reachable_create_stmts self))
+    ThreadGraph.pp self.thread_graph
+    (*M.show Thread.Set.show self.parallel_threads*) "TODO"
+    (show_threads self)
+    (String.concat ", " @@ List.map (fun b -> Format.asprintf "%a" Base.pretty b) self.escaped_bases)
+
+let initial entry_thread = {
+  main = entry_thread;
+  thread_graph = ThreadGraph.initial entry_thread;
+  create_stmts = M.singleton entry_thread [];
+  initial_states = M.singleton entry_thread Thread.InitialState.bottom;
+  active_threads = StatementMap.empty;
+  parallel_threads = M.singleton entry_thread @@ Thread.Set.singleton entry_thread;
+  all_create_stmts = [];
+  escaped_bases = [];
+  thread_ids = M.singleton entry_thread ExpStructEq.Set.empty;
+}
+
+
+let get_main self = ThreadGraph.get_main self.thread_graph
+
+let get_initial_state res thread = M.find thread res.initial_states
+
+let stmt_active_threads stmt res =
+  try StatementMap.find stmt res.active_threads
+  with _ -> failwith @@ Format.asprintf "%a" Stmt.pretty stmt
+
+(*
+let stmt_parallel_aux op stmt res =
+  let threads = op @@ StatementMap.find stmt res.active_threads in
+  Core0.debug "%a -> %s" Stmt.pretty stmt (Thread.Set.show threads);
+  Thread.Set.cardinal threads > 1 || not @@ is_unique res (Thread.Set.choose threads)
+
+
+let stmt_may_be_parallel = stmt_parallel_aux Thread.Powerset.flatten_union
+
+let stmt_must_be_parralel = stmt_parallel_aux Thread.Powerset.flatten_inter
+*)
+
+let stmt_is_parallel stmt res =
+  let threads = StatementMap.find stmt res.active_threads in
+  Core0.debug "%a -> %s" Stmt.pretty stmt (Thread.Set.show threads);
+  Thread.Set.cardinal threads > 1 || not @@ is_unique res (Thread.Set.choose threads)
+
+let is_thread res kf = ThreadGraph.mem_vertex res.thread_graph (Thread.mk kf)
+
+let find_thread res kf = (Thread.mk kf) (* TODO: fix *)
+
+(*
+
+let update_thread thread g state stmt self =
+  let update y = function None -> Some y | Some x -> Some (Thread.InitialState.join x y) in
+  {self with initial_states = M.update thread (update state) self.initial_states;
+             create_stmts = M.add_to_list thread stmt self.create_stmts;
+             thread_graph = g;
+  } (* TODO: join with older values *)
+*)
+
+
