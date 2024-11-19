@@ -17,7 +17,6 @@ let get_paths () =
     let dir_path = Format.asprintf "%a" Path.pp_abs dir in
     let models = Array.to_list @@ Sys.readdir dir_path in
     List.map (fun f -> Share.get_file @@ "models/" ^ f) models
-      (*["pthread.yaml"; "semaphore.yaml"; "svcomp.yaml"]  TODO *)
   | _ -> paths
 
 let load_models () =

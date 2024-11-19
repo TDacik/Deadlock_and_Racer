@@ -33,8 +33,8 @@ let update_edge g parent child stmt =
 let update_edge' g parent child stmt =
   let g0 = update_edge g parent child stmt in
   match Core0.ThreadApproximation.get () with
-    | `Under -> let _ = Format.printf "U\n" in g0
-    | `Over -> let _ = Format.printf "O\n" in update_edge g0 child parent stmt
+    | `Under -> g0
+    | `Over -> update_edge g0 child parent stmt
 
 let get_main g =
   Option.get @@ G.fold_vertex (fun t acc -> match acc with

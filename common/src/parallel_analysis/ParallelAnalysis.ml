@@ -174,7 +174,7 @@ module Make (ValueAnalysis : ValueAnalysis_sig.VALUE_ANALYSIS) = struct
       Context.pop_call ctx''
 
   let compute_thread ctx thread_graph thread =
-    Logger.feedback "Computing for thread %s with %s"
+    Logger.debug "Computing for thread %s with %s"
       (Thread.show thread) (Thread.Powerset.show ctx.active_threads);
     let entry_point = Thread.get_entry_point thread in
     let active = compute_initial ctx thread_graph thread in
