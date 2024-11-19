@@ -52,36 +52,56 @@ let is_thread_local base =
       end
     | _ -> false
 
-(*
-class is_referenced = object
-  inherit Visitor.frama_in_place
+let cache = ref (None : Varinfo.Set.t option)
 
-  module M = Base.Map
+class escapes_expr = object
+  inherit Visitor.frama_c_inplace
 
-  val mutable cache = M.empty
-  val mutable res = (None : bool option)
+  method! vexpr e = match (Cil.stripCasts e).enode with
+    | AddrOf (Var v, _) -> begin match !cache with
+      | None -> failwith "Internal error"
+      | Some c ->
+        Logger.debug ~level:5 "Adding escaping variable: %a" Varinfo.pretty v;
+        cache := Some (Varinfo.Set.add v c); DoChildren
 
-  method! vexpr e = match e.enode with
-    | Lval (Var var', NoOffset) ->
-      if Varinfo.equal var var' then ChangeTo {e with enode = Const const}
-      else DoChildren
+      end
     | _ -> DoChildren
 
-let is_referenced =
-  let cache := ref M.empty in
-  fun base ->
-    try M.find base !cache
-    with Not_found ->
+ end
 
-
-class substitution = object
+class is_referenced_visitor = object
   inherit Visitor.frama_c_inplace
-*)
-(** Very simple approximation of escape analysis:
-    - All referenced variables can escape
-    - All dynamically allocated bases can escape *)
+
+  method! vstmt stmt =
+    let exprs = match stmt.skind with
+      | Instr (Set (lval, expr, _)) -> [expr]
+      | Instr (Call (_, {enode = Lval (Var fn, NoOffset); _}, exprs, _)) ->
+        if ConcurrencyModel.is_atomic_fn fn then []
+        else exprs
+      | Instr (Call (_, _, exprs, _)) -> exprs
+      | Instr (Local_init (_, ConsInit (fn, exprs, _), _)) ->
+        if ConcurrencyModel.is_atomic_fn fn then []
+        else exprs
+      | _ -> []
+    in
+    let check_expr = (fun e -> ignore @@ (new escapes_expr)#vexpr e) in
+    List.iter check_expr exprs;
+    DoChildren
+
+end
+
+let is_referenced var =
+  match !cache with
+  | None ->
+    let _ =  cache := Some Varinfo.Set.empty in
+    let file = Ast.get () in
+    let _  = Visitor.visitFramacFileSameGlobals (new is_referenced_visitor) file in
+    Varinfo.Set.mem var (Option.get !cache)
+  | Some _ -> Varinfo.Set.mem var (Option.get !cache)
+
+(** Simple  escape analysis *)
 let may_escape = function
-  | Var (var, _) -> var.vaddrof
+  | Var (var, _) -> is_referenced var
   | Allocated (var, _, _) -> true
     (*
     begin match Cil_utils.find_allocation_target var with

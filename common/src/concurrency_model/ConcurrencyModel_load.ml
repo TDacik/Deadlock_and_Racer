@@ -140,7 +140,7 @@ let load_model value =
   load_or_skip load_conditions "Conditions" value
 
 let load path =
-  Format.printf "Loading %s\n" path;
+  Core0.debug "Loading %s\n" path;
   let content = In_channel.with_open_text path In_channel.input_all in
   let yaml = Yaml.of_string_exn content in
   load_model yaml

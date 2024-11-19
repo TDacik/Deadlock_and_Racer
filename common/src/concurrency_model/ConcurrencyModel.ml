@@ -118,3 +118,6 @@ let classify_stmt stmt = match stmt.skind with
   | Instr instr -> classify_instr instr
   | Return _ -> Return
   | _ -> Other
+
+let is_atomic_fn var =
+  AtomicFunctions.exists (fun a -> Str.string_match (Str.regexp a) var.vname 0)

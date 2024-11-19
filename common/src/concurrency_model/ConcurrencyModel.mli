@@ -38,3 +38,5 @@ type stmt =
   | Other
 
 val classify_stmt : Stmt.t -> stmt
+
+val is_atomic_fn : Varinfo.t -> bool
