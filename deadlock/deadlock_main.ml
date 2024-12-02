@@ -42,7 +42,7 @@ let main () =
   Profiler.finish ()
 
 let run () =
-  if Racer.Version.get () then show_version ()
+  if Deadlock.Version.get () then show_version ()
   else if Deadlock.Enabled.get () then main ()
   else ()
 

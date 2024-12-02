@@ -20,6 +20,12 @@ module Enabled = False
     let help = "Run deadlock detection"
   end)
 
+module Version = False
+  (struct
+    let option_name = "-dl-version"
+    let help = "Show version and exit"
+  end)
+
 module JsonOutput = Self.Filepath
   (struct
     let option_name = "-dl-json-output"
