@@ -132,13 +132,13 @@ module Self = struct
     |> List.filter (fun (base, _) -> (BaseUtils.keep_for_racer thread base))
 
   let memory_accesses ?(local=false) stmt =
-    try
+    (*try
       Logger.debug "R: %a : %a" Stmt.pretty stmt Locations.Zone.pretty (Inout.stmt_inputs stmt);
       Logger.debug "W: %a : %a" Stmt.pretty stmt Locations.Zone.pretty (Inout.stmt_outputs stmt);
       let reads = get_accesses local @@ Inout.stmt_inputs stmt in
       let writes = get_accesses local @@ Inout.stmt_outputs stmt in
       (reads, writes)
-    with _ ->
+    with _ ->*)
       let reads = compute_reads local stmt in
       let writes = compute_writes local stmt in
       (reads, writes)

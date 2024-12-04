@@ -41,12 +41,10 @@ module type VALUE_ANALYSIS = sig
 
   include VALUE_ANALYSIS_BASE
 
-  val update_thread : Thread.t -> Thread.InitialState.t -> unit
+  val update_thread : Thread.t -> Exp.Set.t -> Thread.InitialState.t -> unit
 
   val set_active_thread : Thread.t -> unit
 
   val get_active_thread : unit -> Thread.t
-
-  val set_escaped_bases : Base.t list -> unit
 
 end

@@ -224,8 +224,13 @@ module Make (ValueAnalysis : VALUE_ANALYSIS) = struct
       (Stmt.Set.cardinal stmts)
       Core0.pp_globals (fst initial');
 
+    let args =
+      Stmt.Set.elements stmts
+      |> List.map ConcurrencyModel.get_thread_arg
+      |> Exp.Set.of_list
+    in
     ValueAnalysis.set_active_thread parent;
-    ValueAnalysis.update_thread child initial';
+    ValueAnalysis.update_thread child args initial';
     initial'
 
   module WTO = Graph.WeakTopological.Make(ThreadGraph)
@@ -312,8 +317,6 @@ module Make (ValueAnalysis : VALUE_ANALYSIS) = struct
 
     graph := res.thread_graph;
     let res = compute_fixpoint res in
-
-    ValueAnalysis.set_escaped_bases res.escaped_bases;
 
     Logger.feedback "%a" ThreadAnalysis0.pp_short res;
     Logger.debug ~level:3 "Thread analysis: %a" pp res;

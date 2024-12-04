@@ -119,5 +119,8 @@ let classify_stmt stmt = match stmt.skind with
   | Return _ -> Return
   | _ -> Other
 
+let get_thread_arg stmt = match classify_stmt stmt with
+  | Thread_create (_, _, arg) -> arg
+
 let is_atomic_fn var =
   AtomicFunctions.exists (fun a -> Str.string_match (Str.regexp a) var.vname 0)
