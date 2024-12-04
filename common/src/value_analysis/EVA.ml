@@ -166,6 +166,8 @@ module Self = struct
     Logger.debug ">   Read: %a" Zone.pretty read_zone;
     get_accesses local read_zone
 
+  let check_imprecision () = ()
+
 end
 
 include ValueAnalysis_builder.Make(Self)

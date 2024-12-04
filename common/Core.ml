@@ -36,7 +36,9 @@ let init () =
   (if NonDeterminization.get () then Nondetermizer.run ()); *)
   (*Inline.run ();*)
   Imprecision.check ();
-  value_analysis ()
+  let module ValueAnalysis = (val value_analysis ()) in
+  ValueAnalysis.check_imprecision ();
+  (module ValueAnalysis : VALUE_ANALYSIS)
 
 (** Following is intended only for testing thread analysis without running Deadlock/Racer. *)
 

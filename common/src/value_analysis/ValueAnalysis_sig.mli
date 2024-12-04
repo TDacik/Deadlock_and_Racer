@@ -47,4 +47,6 @@ module type VALUE_ANALYSIS = sig
 
   val get_active_thread : unit -> Thread.t
 
+  val check_imprecision : unit -> unit
+
 end

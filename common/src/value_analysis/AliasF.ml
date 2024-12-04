@@ -122,6 +122,8 @@ module Self = struct
     Syntactic.expr_reads ~local:true stmt expr
     |> normalise stmt
 
+  let check_imprecision () = ()
+
 end
 
 include ValueAnalysis_builder.Make(Self)
