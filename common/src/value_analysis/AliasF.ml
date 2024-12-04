@@ -122,7 +122,8 @@ module Self = struct
     Syntactic.expr_reads ~local:true stmt expr
     |> normalise stmt
 
-  let check_imprecision () = ()
+  let check_imprecision () =
+    ImprecisionDetection.check_malloc ()
 
 end
 

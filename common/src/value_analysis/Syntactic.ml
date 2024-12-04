@@ -151,7 +151,8 @@ module Self = struct
     |> List.filter (fun base -> local || BaseUtils.keep_for_racer thread base)
     |> List.map (fun b -> (b, Int_Intervals.top))
 
-  let check_imprecision () = ()
+  let check_imprecision () =
+    ImprecisionDetection.check_malloc ()
 
 end
 

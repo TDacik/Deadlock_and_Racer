@@ -15,11 +15,16 @@ type t =
   | JoinInLoop of Stmt.t
   | ActiveWaiting of Stmt.t
   | TryLock of string
+  | Malloc
+
+  | Backend of t
 
 let imprecisions = ref ([] : t list)
 
 let add (source : t) =
   imprecisions := source :: !imprecisions
+
+let add_backend (source : t) = add (Backend source)
 
 let get_imprecisions () = !imprecisions
 
@@ -46,28 +51,33 @@ let check () =
   let empty_while_loops = CFG_utils.filter_stmts is_active_waiting in
   List.iter (fun s -> add (ActiveWaiting s)) empty_while_loops
 
-let show = function
+let rec show = function
   | MemAccess (stmt) ->
-    Core0.result "  - Memory access at %a" Print_utils.pretty_stmt_short stmt
+    Format.asprintf "Memory access at %a" Print_utils.pretty_stmt_short stmt
   | Lock (stmt, _) ->
-    Core0.result "  - No lock at %a" Print_utils.pretty_stmt_short stmt
+    Format.asprintf "No lock at %a" Print_utils.pretty_stmt_short stmt
   | Unlock (stmt, _) ->
-    Core0.result "  - No unlock at %a" Print_utils.pretty_stmt_short stmt
+    Format.asprintf "No unlock at %a" Print_utils.pretty_stmt_short stmt
   | FunctionPointer var ->
-    Core0.result "  - Function pointer %a" Cil_datatype.Varinfo.pretty var
+    Format.asprintf "Function pointer %a" Cil_datatype.Varinfo.pretty var
   | ThreadParamArray stmt ->
-    Core0.result "  - Thread created at %a has array parameter" Print_utils.pretty_stmt_short stmt
+    Format.asprintf "Thread created at %a has array parameter" Print_utils.pretty_stmt_short stmt
   | Join stmt ->
-    Core0.result "  - Thread join at %a" Print_utils.pretty_stmt_short stmt
+    Format.asprintf "Thread join at %a" Print_utils.pretty_stmt_short stmt
   | JoinInLoop stmt ->
-    Core0.result "  - Thread join in loop at %a" Print_utils.pretty_stmt_short stmt
+    Format.asprintf "Thread join in loop at %a" Print_utils.pretty_stmt_short stmt
   | ActiveWaiting stmt ->
-    Core0.result "  - Active waiting at %a" Print_utils.pretty_stmt_short stmt
+    Format.asprintf "Active waiting at %a" Print_utils.pretty_stmt_short stmt
   | TryLock (str) ->
-    Core0.result "  - Trylock status cannot be checked: %s" str
+    Format.asprintf "Trylock status cannot be checked: %s" str
+  | Malloc ->
+    Format.asprintf "Dynamic allocation"
+
+  | Backend imprecision ->
+    Format.asprintf "%s (not supported by the backend)" (show imprecision)
 
 let report filter =
   let imprecisions = List.filter filter !imprecisions in
   if imprecisions != [] then
     let _ = Core0.result "The result may be imprecise, reasons:" in
-    List.iter show imprecisions
+    List.iter (fun i -> Core0.result "  - %s" (show i)) imprecisions
