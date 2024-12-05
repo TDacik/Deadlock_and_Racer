@@ -8,6 +8,8 @@
  *
  * Author: Tomas Dacik (idacik@fit.vut.cz, 2024 *)
 
+module Self = Deadlock
+
 module Weight = struct
   include Int
 
@@ -73,7 +75,16 @@ module Result = struct
 
 end
 
+let preprocess lock_graph =
+  if Self.DoubleLocks.get () then lock_graph
+  else
+    Lockgraph.fold_edges_e (fun (src, label, dst) acc ->
+      if Lock.equal src dst then acc
+      else Lockgraph.add_edge_e acc (src, label, dst)
+    ) lock_graph Lockgraph.empty
+
 let compute lock_graph =
+  let lock_graph = preprocess lock_graph in
   try let cycle = BF.find_negative_cycle lock_graph in
     [Deadlock.mk cycle]
   with Not_found -> []

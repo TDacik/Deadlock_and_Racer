@@ -34,3 +34,9 @@ module JsonOutput = Self.Filepath
     let existence = Frama_c_kernel.Filepath.Must_not_exist
     let file_kind = "Result"
   end)
+
+module DoubleLocks = Self.False
+  (struct
+    let option_name = "-dl-double-locks"
+    let help = "Report double locks as deadlocks (default false)"
+  end)
