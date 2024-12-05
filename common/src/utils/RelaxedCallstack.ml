@@ -6,21 +6,22 @@ open Cil_datatype
 
 include Callstack
 
-(* TODO: command-line parameters *)
-let depth = 2
-let entry_point = true
+(** Parameters set during plugin initialization *)
+
+let depth = ref 2
+let entry_point = ref true
 
 (** {2 Override of comparison function} *)
 
-let extract cs = {cs with calls = BatList.take depth cs.calls}
+let extract cs = {cs with calls = BatList.take !depth cs.calls}
 
 let compare_thread cs1 cs2 =
-  if entry_point then Thread.compare cs1.thread cs2.thread
+  if !entry_point then Thread.compare cs1.thread cs2.thread
   else 0
 
 let compare_call_list calls1 calls2 =
-  let calls1 = BatList.take depth calls1 in
-  let calls2 = BatList.take depth calls2 in
+  let calls1 = BatList.take !depth calls1 in
+  let calls2 = BatList.take !depth calls2 in
   List.compare Call.compare calls1 calls2
 
 let equal cs1 cs2 = (compare cs1 cs2) = 0
@@ -30,10 +31,10 @@ let show_event cs = match cs.event with
   | Some stmt -> Format.asprintf "%a" Core0.pretty_stmt stmt
 
 let show_short cs =
-  if not entry_point && depth == 0 then ""
-  else if not entry_point then show_call_list @@ BatList.take depth cs.calls
+  if not !entry_point && !depth == 0 then ""
+  else if not !entry_point then show_call_list @@ BatList.take !depth cs.calls
   else Format.asprintf "%s : %s : %s"
-    (Thread.show cs.thread) (show_call_list @@ BatList.take depth cs.calls) (show_event cs)
+    (Thread.show cs.thread) (show_call_list @@ BatList.take !depth cs.calls) (show_event cs)
 
 let compare cs1 cs2 =
   let aux1 = Option.compare Stmt.compare cs1.event cs2.event in

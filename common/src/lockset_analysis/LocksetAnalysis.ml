@@ -308,6 +308,7 @@ module Make (ValueAnalysis : VALUE_ANALYSIS) = struct
     lss, res'
 
   let compute threads =
+    Logger.feedback "Starting lockset analysis";
     let init_res = Result.empty in
     let thread_graph = ThreadAnalysis.Result.get_threads threads in
 

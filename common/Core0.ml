@@ -73,25 +73,10 @@ module OverApproxFunctionPointers = Self.False
     let help = "Over-approximate function pointer calls with all referenced functions"
   end)
 
-module LocksetContextDepth = Self.Int
+module ContextDepth = Self.Int
   (struct
-    let option_name = "-cc-lockset-context-depth"
+    let option_name = "-cc-context-depth"
     let arg_name = "depth"
     let help = "TODO"
     let default = 1
   end)
-
-module ContextSensitivity = Self.Enum
-  (struct
-    let option_name = "-cc-context-sensitivity"
-    let arg_name = "none|thread|one_call"
-    let help = "TODO"
-
-    type t = [`None | `Thread | `OneCall]
-    let default = `Thread
-    let all_values = [`None; `Thread; `OneCall]
-    let to_string = function
-      | `None -> "none"
-      | `Thread -> "thread"
-      | `OneCall -> "one_call"
-   end)
