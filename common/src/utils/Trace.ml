@@ -20,6 +20,7 @@ type t = {
 
 let get_stmt self = self.second_event
 let get_thread self = self.thread
+let get_events self = (self.first_event, self.second_event)
 
 let rec common_prefix calls1 calls2 = match calls1, calls2 with
   | [], xs -> ([], [], xs)

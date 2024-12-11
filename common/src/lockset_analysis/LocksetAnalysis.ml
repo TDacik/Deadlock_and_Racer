@@ -136,6 +136,9 @@ module Result = struct
          in
          Lock.PowerSet.map (Lock.Set.filter check_status) lss
 
+  let stmt_must_lockset res stmt =
+    Lock.PowerSet.flatten_inter @@ stmt_locksets res stmt
+
   (** Debug info *)
 
   let show_stmt res stmt =

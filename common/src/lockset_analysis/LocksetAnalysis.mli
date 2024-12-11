@@ -15,6 +15,8 @@ module Result : sig
   val stmt_locksets :
     t -> ?callstack:Callstack.t -> ?state:Cvalue.Model.t -> Stmt.t -> Lock.PowerSet.t
 
+  val stmt_must_lockset : t -> Stmt.t -> Lock.Set.t
+
   val show_stmt : t -> Stmt.t -> string
 
   val show_fn : t -> Kernel_function.t -> string

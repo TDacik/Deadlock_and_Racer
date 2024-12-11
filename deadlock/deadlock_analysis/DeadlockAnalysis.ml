@@ -84,9 +84,24 @@ let preprocess lock_graph =
       else Lockgraph.add_edge_e acc (src, label, dst)
     ) lock_graph Lockgraph.empty
 
-let compute lock_graph =
-  let lock_graph = preprocess lock_graph in
-  try let cycle = BF.find_negative_cycle lock_graph in
+let is_must_trace locksets lock1 lock2 trace =
+  let stmt = Trace.get_stmt trace in
+  let must_ls = LocksetAnalysis.Result.stmt_must_lockset locksets stmt in
+  Lock.Set.mem lock1 must_ls && Lock.Set.mem lock2 must_ls
+
+let remove_may_edges locksets lock_graph =
+  Lockgraph.fold_edges_e (fun (src, traces, dst) acc ->
+    let traces = List.filter (is_must_trace locksets src dst) traces in
+    match traces with
+    | [] -> acc
+    | ts -> Lockgraph.add_edge_e acc (src, ts, dst)
+  ) lock_graph Lockgraph.empty
+
+let compute locksets =
+  let lockgraph = LocksetAnalysis.Result.get_lockgraph locksets in
+  let lockgraph = preprocess lockgraph in
+  let lockgraph = remove_may_edges locksets lockgraph in
+  try let cycle = BF.find_negative_cycle lockgraph in
     [Deadlock.mk cycle]
   with Not_found -> []
 

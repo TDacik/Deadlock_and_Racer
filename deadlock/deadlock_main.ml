@@ -26,8 +26,7 @@ let main () =
   let lockset_res = LocksetAnalysis.compute thread_res in
   Profiler.add "Lockset analysis";
 
-  let lockgraph = Result.get_lockgraph lockset_res in
-  let deadlocks = DeadlockAnalysis.compute lockgraph in
+  let deadlocks = DeadlockAnalysis.compute lockset_res in
   Profiler.add "Deadlock analysis";
 
   (* Register results for GUI *)
