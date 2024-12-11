@@ -193,14 +193,15 @@ module Make (ValueAnalysis : VALUE_ANALYSIS) = struct
       Imprecision.add (Lock (stmt, expr));
     );
 
+    let callstack = Callstack.push_event stmt ctx.callstack in
+
     let locked = List.map (fun (base, offset) -> match status with
-      | None -> Lock.mk ~callstack:ctx.callstack ~kind base offset
-      | Some status -> Lock.mk ~callstack:ctx.callstack ~kind ~status base offset
+      | None -> Lock.mk ~callstack ~kind base offset
+      | Some status -> Lock.mk ~callstack ~kind ~status base offset
     ) lock_values
     in
     Logger.debug ">       [|%a|] = %s" Exp.pretty expr (Lock.show_list locked);
-    let trace_cs = Callstack.push_event stmt ctx.callstack in
-    let lock_graph = Lockgraph.update_on_lock res.lock_graph ctx.lockset locked trace_cs in
+    let lock_graph = Lockgraph.update_on_lock res.lock_graph ctx.lockset locked callstack in
     let lss = Lock.PowerSet.add_each ctx.lockset locked in
     lss, {res with lock_graph = lock_graph}
 

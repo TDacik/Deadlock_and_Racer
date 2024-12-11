@@ -26,10 +26,6 @@ let compare_call_list calls1 calls2 =
 
 let equal cs1 cs2 = (compare cs1 cs2) = 0
 
-let show_event cs = match cs.event with
-  | None -> ""
-  | Some stmt -> Format.asprintf "%a" Core0.pretty_stmt stmt
-
 let show_short cs =
   if not !entry_point && !depth == 0 then ""
   else if not !entry_point then show_call_list @@ BatList.take !depth cs.calls

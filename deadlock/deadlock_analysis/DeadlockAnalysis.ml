@@ -49,11 +49,12 @@ module Deadlock = struct
 
   let mk (cycle : Lockgraph.E.t list) =
     List.fold_left (fun acc (lock1, traces, lock2) ->
-      let trace = List.hd traces in (* TODO*)
+      let trace = List.hd traces in (* TODO: trace ranking*)
       (Trace.get_thread trace, lock1, lock2, trace) :: acc
     ) [] cycle
 
-  let report dl = String.concat "\n\n" @@ List.map Dependency.show dl
+  let report dl =
+    "Deadlock: \n" ^ String.concat "\n\n" @@ List.map Dependency.show dl
 
   let to_json dl =
     `List (List.map Dependency.to_json dl)

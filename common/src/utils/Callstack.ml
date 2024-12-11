@@ -12,7 +12,7 @@ module Call = struct
   type t = Kernel_function.t * Stmt.t [@@deriving compare, equal]
 
   let show (kf, stmt) =
-    Format.asprintf "Call of %a at %a"
+    Format.asprintf "Call of %a (%a)"
       Kernel_function.pretty kf
       Print_utils.pretty_stmt_short stmt
 
@@ -64,10 +64,21 @@ let last_call cs =
 
 (** Show *)
 
-let show_call_list ?(short=true) calls =
-  let separator = if short then "->" else "\n        " in
+let show_call_list ?(short=true) ?(indent=4) calls =
+  let separator = if short then "->" else "\n" ^ String.init indent (fun _ -> ' ') in
   let show_call = if short then Call.show_short else Call.show in
   String.concat separator @@ List.map show_call @@ List.rev calls
+
+let show_event ?prefix cs =
+  let prefix = match prefix with
+    | None -> ""
+    | Some p -> p ^ " at "
+  in
+  let stmt = match cs.event with
+    | None -> "<no stmt>"
+    | Some stmt -> Format.asprintf "%a" Print_utils.pretty_stmt_short stmt
+  in
+  Format.asprintf "%s%s" prefix stmt
 
 let show ?event cs =
   let event_str = match event with
