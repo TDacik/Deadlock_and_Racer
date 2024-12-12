@@ -17,6 +17,12 @@ module ConcurrencyModels = Self.Filepath_list
     let file_kind = ".yaml model"
   end)
 
+module Statistics = Self.False
+  (struct
+    let option_name = "-cc-stats"
+    let help = "Print statistics after analysis is finished"
+  end)
+
 module JsonOutput = Self.Filepath
   (struct
     let option_name = "-cc-json-output"

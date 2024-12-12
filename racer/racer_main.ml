@@ -41,6 +41,7 @@ let main () =
     WitnessGenerator1.dump_trace race @@ Racer.SVWitnessPath.get ()
   else ();
 
+  Core.finalize lockset_res thread_graph;
   Profiler.finish ();
   if Racer.Profile.get() then Profiler.report () else ()
 

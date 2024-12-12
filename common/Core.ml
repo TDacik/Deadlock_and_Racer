@@ -40,6 +40,14 @@ let init () =
   ValueAnalysis.check_imprecision ();
   (module ValueAnalysis : VALUE_ANALYSIS)
 
+let finalize ls_res thread_res =
+  if Core0.Statistics.get () then
+    Core0.feedback "Statistics:\n    - #threads: %d\n    - #edges: %d"
+      (List.length @@ ThreadAnalysis.Result.get_thread_list thread_res)
+      (Lockgraph.nb_edges @@ LocksetAnalysis.Result.get_lockgraph ls_res)
+
+
+
 (** Following is intended only for testing thread analysis without running Deadlock/Racer. *)
 
 let run () =

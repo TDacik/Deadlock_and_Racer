@@ -38,6 +38,8 @@ let main () =
   if not @@ Deadlock.JsonOutput.is_default () then
     DeadlockAnalysis.Result.out_json deadlocks @@ Deadlock.JsonOutput.get ()
   else ();
+
+  Core.finalize lockset_res thread_res;
   Profiler.finish ()
 
 let run () =
