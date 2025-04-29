@@ -14,18 +14,22 @@ bug-reports: "https://github.com/TDacik/Deadlock/issues"
 
 depends: [
     "ocaml" { >= "4.12.0" }
-    "frama-c" { >= "23.1" }
-    "ounit2"
-    "containers"
+    "frama-c" { = "29.0" }
+
+    "batteries"
+    "yojson"
+    "yaml"
+    "uuidm"
+    "sha"
+    "ppx_compare"
 ]
 
 build: [
-    [make]
+    ["dune" "build"]
 ]
 
 install: [
-    [make "setup"]
-    [make "install"]
+    ["dune" "install"]
 ]
 
 url {
