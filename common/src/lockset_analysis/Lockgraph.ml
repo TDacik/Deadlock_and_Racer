@@ -46,11 +46,14 @@ let add_edge_e g (lock1, traces, lock2) =
     add_edge_e g edge
 
 let update_on_lock g held locked callstack =
-  let held = Lock.Set.elements held in
-  BatList.cartesian_product held locked
-  |> List.fold_left (fun g (x, y) ->
+  try (* Hack for master-lock *)
+    let held = Lock.Set.elements held in
+    BatList.cartesian_product held locked
+    |> List.fold_left (fun g (x, y) ->
       let trace = Trace.mk (Lock.get_callstack x) callstack in
       add_edge_e g (x, [trace], y)
     ) g
+  with _ -> g
+
 
 let get_traces (_, traces, _) = traces

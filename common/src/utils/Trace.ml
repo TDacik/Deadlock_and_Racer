@@ -7,14 +7,22 @@ open Cil_datatype
 module Callstack = RelaxedCallstack
 open Callstack
 
+(** Comparision for calls can be ignored becuase this information is so far
+    not used by the deadlock detection. *)
+module Calls = struct
+  type t = Call.t list
+  let compare _ _ = 0
+  let equal _ _ = true
+end
+
 type t = {
   thread : Thread.t;
-  common_prefix : Call.t List.t;
+  common_prefix : Calls.t;
 
-  first : Call.t List.t;
+  first : Calls.t;
   first_event: Stmt.t;
 
-  second : Call.t List.t;
+  second : Calls.t;
   second_event: Stmt.t;
 } [@@deriving compare, equal]
 

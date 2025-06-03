@@ -96,6 +96,28 @@ module Context = struct
     if C.mem (callstack, ctx.active_threads) !cache then ctx
     else raise Not_found
 
+  (** Function summaries
+
+  let show_fn_summaries ctx =
+    FunctionSummaries.fold (fun (cs, fn, active) post acc ->
+      Format.asprintf "%s\n\t (%s, %a, %a) ↦  %a"
+        acc
+        (Callstack.show_short cs)
+        Kernel_function.pretty fn
+        Thread.Powerset.pp active
+        Thread.Powerset.pp post
+    ) !fn_cache "=========================================\n\nSummary:\n"
+
+  let add_fn_summary ctx fn res =
+    fn_cache := FunctionSummaries.add (ctx.callstack, fn, ctx.active_threads) res !fn_cache
+
+  let find_fn_summary ctx fn =
+    Core0.feedback "%s" (show_fn_summaries ctx);
+    {ctx with
+      active_threads = FunctionSummaries.find (ctx.callstack, fn, ctx.active_threads) !fn_cache}
+
+  *)
+
 end
 
 open Context
@@ -167,19 +189,28 @@ module Make (ValueAnalysis : ValueAnalysis_sig.VALUE_ANALYSIS) = struct
 
   and compute_function ctx fn stmt =
     if not @@ Kernel_function.has_definition fn then ctx
-    else
+    else(* try
+      let ctx = Context.find_fn_summary ctx fn in
+      Core0.feedback "Cache hit";
+      ctx
+    with Not_found ->*)
+      let _ = Core0.debug "Computing fn %a with %d"
+        Kernel_function.pretty fn
+        (Thread.Powerset.cardinal ctx.active_threads)
+      in
       let ctx' = Context.push_call ctx stmt fn in
       let stmt = Kernel_function.find_first_stmt fn in
       let ctx'' = compute_stmt ctx' stmt in
+      (*Context.add_fn_summary ctx' fn ctx''.active_threads;*)
       Context.pop_call ctx''
 
   let compute_thread ctx thread_graph thread =
-    Logger.debug "Computing for thread %s with %s"
-      (Thread.show thread) (Thread.Powerset.show ctx.active_threads);
     let entry_point = Thread.get_entry_point thread in
     let active = compute_initial ctx thread_graph thread in
     let ctx' = Context.reset ctx thread active in
     let stmt = Kernel_function.find_first_stmt entry_point in
+    Logger.debug "Computing for thread %s with %s"
+      (Thread.show thread) (Thread.Powerset.show ctx'.active_threads);
     compute_stmt ctx' stmt
 
   let compute threads =
@@ -196,7 +227,7 @@ module Make (ValueAnalysis : ValueAnalysis_sig.VALUE_ANALYSIS) = struct
     in
 
     Logger.feedback "May-run-in-parallel analysis finished";
-    Logger.debug "%s" (Context.show_stmt_summaries res);
+    (*Logger.debug "%s" (Context.show_stmt_summaries res);*)
 
     res
 

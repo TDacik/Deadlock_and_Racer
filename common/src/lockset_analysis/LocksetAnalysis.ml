@@ -66,7 +66,6 @@ module Result = struct
   (** Summaries update *)
 
   let add_stmt_summary res ctx stmt exit_lss =
-    (*assert (not @@ Lock.PowerSet.is_empty exit_lss);*)
     let cs = ctx.Context.callstack in
     {res with stmt_summaries =
       StatementSummaries.add (cs, stmt, ctx.lockset) exit_lss res.stmt_summaries
@@ -79,7 +78,6 @@ module Result = struct
     }
 
   let add_fn res ctx exit_lss =
-    (*assert (not @@ Lock.PowerSet.is_empty exit_lss);*)
     let cs = ctx.Context.callstack in
     let fn = Callstack.top ctx.callstack in
     {res with fn_summaries =
@@ -210,11 +208,14 @@ module Make (ValueAnalysis : VALUE_ANALYSIS) = struct
 
   and update_on_unlock ctx res stmt expr =
     let lock_values = ValueAnalysis.eval_expr_concretised ~callstack:ctx.callstack stmt expr in
-    let lss = match lock_values with
-    (*
-    (if lock_values = [] && not @@ Lock.Set.is_empty ctx.lockset then
+
+    (*let inter = Lockset.intersection ctx.lockset (Lockset.of_list lockvalues)
+    (if Lockset.is_empty inter then
       Imprecision.add (Unlock (stmt, expr));
     );*)
+
+    let lss = match lock_values with
+    (* TODO: is this covered? *)
     | [] when Lock.Set.is_empty ctx.lockset -> Lock.PowerSet.singleton ctx.lockset
     | [] -> Lock.Set.fold (fun lock acc ->
                Lock.PowerSet.add (Lock.Set.remove lock ctx.lockset) acc
@@ -223,6 +224,11 @@ module Make (ValueAnalysis : VALUE_ANALYSIS) = struct
       let unlocked = List.map (fun (base, offset) -> Lock.mk base offset) lock_values in
       Logger.debug ">       [|%a|] = %s" Exp.pretty expr (Lock.show_list unlocked);
       Lock.PowerSet.remove_each ctx.lockset unlocked
+    in
+
+    let lss =
+      if List.length lock_values > 1 then Lock.PowerSet.add Lock.Set.empty lss
+      else lss
     in
     lss, res
 
@@ -325,13 +331,17 @@ module Make (ValueAnalysis : VALUE_ANALYSIS) = struct
     ) thread_graph init_res
     in
 
+    (* TODO: investigate why this slow down the analysis
+
     Logger.debug "Function summaries:%s"
       (Result.show_fn_summaries res);
     Logger.debug "Statement summaries:%s"
       (Result.show_stmt_summaries res);
+
+
     Logger.feedback "Lockgraph: %s"
       (Result.show res);
-
+    *)
     Logger.feedback "Lockset analysis finished";
     res
 

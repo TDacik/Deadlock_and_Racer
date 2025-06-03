@@ -10,6 +10,8 @@
 
 module Self = Deadlock
 
+module Logger = Deadlock.Logger(struct let dkey = "deadlock-detection" end)
+
 module Weight = struct
   include Int
 
@@ -45,18 +47,27 @@ end
 
 module Deadlock = struct
 
-  type t = Dependency.t list
+  type kind = Must | May
 
-  let mk (cycle : Lockgraph.E.t list) =
-    List.fold_left (fun acc (lock1, traces, lock2) ->
-      let trace = List.hd traces in (* TODO: trace ranking*)
-      (Trace.get_thread trace, lock1, lock2, trace) :: acc
-    ) [] cycle
+  type t = kind * Dependency.t list
 
-  let report dl =
-    "Deadlock: \n" ^ String.concat "\n\n" @@ List.map Dependency.show dl
+  let is_must (kind, _) = kind = Must
+  let is_may (kind, _) = kind = May
 
-  let to_json dl =
+  let mk kind (cycle : Lockgraph.E.t list) =
+    let deps =
+      List.fold_left (fun acc (lock1, traces, lock2) ->
+        let trace = List.hd traces in (* TODO: trace ranking*)
+        (Trace.get_thread trace, lock1, lock2, trace) :: acc
+      ) [] cycle
+    in
+    (kind, deps)
+
+  let report (kind, dl) =
+    let prefix = match kind with Must -> "Must" | May -> "May" in
+    prefix ^ " deadlock: \n" ^ String.concat "\n\n" @@ List.map Dependency.show dl
+
+  let to_json (_, dl) =
     `List (List.map Dependency.to_json dl)
 
 end
@@ -98,12 +109,19 @@ let remove_may_edges locksets lock_graph =
   ) lock_graph Lockgraph.empty
 
 let compute locksets =
+  Logger.feedback "Started";
   let lockgraph = LocksetAnalysis.Result.get_lockgraph locksets in
   let lockgraph = preprocess lockgraph in
-  let lockgraph = remove_may_edges locksets lockgraph in
-  try let cycle = BF.find_negative_cycle lockgraph in
-    [Deadlock.mk cycle]
-  with Not_found -> []
+  let must_lockgraph = remove_may_edges locksets lockgraph in
+
+  (** First check must lockgraph *)
+  try let cycle = BF.find_negative_cycle must_lockgraph in
+    [Deadlock.mk Deadlock.Must cycle]
+  with Not_found ->
+    (** Check may lockgraph *)
+      try let cycle = BF.find_negative_cycle lockgraph in
+        [Deadlock.mk Deadlock.May cycle]
+      with Not_found -> []
 
 let report flag =
   if flag then Format.printf "Deadlock found\n"

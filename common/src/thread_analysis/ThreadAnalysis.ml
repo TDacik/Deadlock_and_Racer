@@ -187,8 +187,10 @@ module Make (ValueAnalysis : VALUE_ANALYSIS) = struct
       let state = Thread.InitialState.mk globals arg in
       Logger.debug "Extracted at %a: %s" Print_utils.pretty_stmt_short stmt (Thread.InitialState.show state);
       state
-    | _ -> (* TODO *)
-      let globals = ValueAnalysis.stmt_state stmt in
+    | _ -> (* TODO: arg *)
+      let globals1 = ValueAnalysis.stmt_state ~after:true stmt in
+      let globals2 = ValueAnalysis.stmt_state ~after:false stmt in
+      let globals = Cvalue.Model.join globals1 globals2 in
       let arg = Cvalue.V.bottom in
       Thread.InitialState.mk globals arg
 

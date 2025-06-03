@@ -8,7 +8,7 @@ include Callstack
 
 (** Parameters set during plugin initialization *)
 
-let depth = ref 2
+let depth = ref 1
 let entry_point = ref true
 
 (** {2 Override of comparison function} *)
