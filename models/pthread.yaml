@@ -93,3 +93,6 @@ Threads:
   join:
     - function: "pthread_join"
       thread-id-position: 0
+
+Atomic:
+  functions: ["pthread_cond*"]
