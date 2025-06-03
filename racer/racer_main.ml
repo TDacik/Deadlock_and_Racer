@@ -43,7 +43,7 @@ let main () =
 
   Core.finalize lockset_res thread_graph;
   Profiler.finish ();
-  if Racer.Profile.get() then Profiler.report () else ()
+  if Core0.Profile.get() then Profiler.report () else ()
 
 let run () =
   if Racer.Version.get () then show_version ()

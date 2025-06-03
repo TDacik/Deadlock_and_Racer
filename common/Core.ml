@@ -34,7 +34,6 @@ let init () =
   (*
   ConcurrencyModel_data.print ();
   (if NonDeterminization.get () then Nondetermizer.run ()); *)
-  (*Inline.run ();*)
   Imprecision.check ();
   let module ValueAnalysis = (val value_analysis ()) in
   ValueAnalysis.check_imprecision ();
@@ -51,7 +50,11 @@ let finalize ls_res thread_res =
 (** Following is intended only for testing thread analysis without running Deadlock/Racer. *)
 
 let run () =
-  if JustThreadAnalysis.get () then
+  if PreprocessOnly.get () then
+    OverApprox.run ()
+  else if Core0.Inline.get () then
+    RemoveTrivialBranching.run ()
+  else if JustThreadAnalysis.get () then
     let module ValueAnalysis = (val init ()) in
     let module ThreadAnalysis = ThreadAnalysis.Make(ValueAnalysis) in
     let threads =  ThreadAnalysis.compute () in

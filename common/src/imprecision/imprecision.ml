@@ -24,7 +24,7 @@ let imprecisions = ref ([] : t list)
 let add (source : t) =
   imprecisions := source :: !imprecisions
 
-let add_backend (source : t) = add (Backend source)
+let add_backend (source : t) = () (*add (Backend source)*)
 
 let get_imprecisions () = !imprecisions
 
@@ -34,20 +34,16 @@ let is_active_waiting stmt =
       List.for_all check_instructions block_else.bstmts
       && List.for_all check_instructions block_then.bstmts
     | Break _ -> true
+    | Block b -> List.for_all check_instructions b.bstmts
     | _ -> false
   in
   match stmt.skind with
   | Loop (_, block, _, _, _) -> begin match block.bstmts with
-    | [s] -> check_instructions s
-    | _ -> false
+    | stmts -> List.for_all check_instructions stmts
     end
   | _ -> false
 
 let check () =
-  (*Globals.Vars.iter (fun v _ ->
-    if Cil.isFunPtrType v.vtype
-    then add (FunctionPointer v)
-  );*)
   let empty_while_loops = CFG_utils.filter_stmts is_active_waiting in
   List.iter (fun s -> add (ActiveWaiting s)) empty_while_loops
 

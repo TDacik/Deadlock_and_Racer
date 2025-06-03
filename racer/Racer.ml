@@ -2,7 +2,7 @@
  *
  * Author: Tomas Dacik (idacik@fit.vut.cz), 2024 *)
 
-let version = "2.0"
+let version = "2.1"
 
 module Self = Plugin.Register
   (struct
@@ -25,12 +25,6 @@ module Version = False
   (struct
     let option_name = "-racer-version"
     let help = "Show version and exit"
-  end)
-
-module Profile = False
-  (struct
-    let option_name = "-racer-profile"
-    let help = "Print profiling info"
   end)
 
 (*

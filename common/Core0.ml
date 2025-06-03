@@ -23,6 +23,12 @@ module Statistics = Self.False
     let help = "Print statistics after analysis is finished"
   end)
 
+module Profile = False
+  (struct
+    let option_name = "-cc-profile"
+    let help = "Print profiling info"
+  end)
+
 module JsonOutput = Self.Filepath
   (struct
     let option_name = "-cc-json-output"
@@ -67,10 +73,16 @@ module ValueAnalysisType = Self.Enum
       | `Eva -> "eva"
    end)
 
-module NonDeterminization = Self.False
+module Inline = Self.False
   (struct
-    let option_name = "-cc-nondet"
-    let help = "Make all branching nedeterministic"
+    let option_name = "-cc-inline"
+    let help = "Inline trivial conditions (useful when combine with loop unfolding)"
+  end)
+
+module PreprocessOnly = Self.False
+  (struct
+    let option_name = "-cc-preprocess"
+    let help = ""
   end)
 
 module OverApproxFunctionPointers = Self.False

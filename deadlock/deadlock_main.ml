@@ -35,12 +35,15 @@ let main () =
 
   report lockset_res deadlocks;
 
+  Postprocessing.run deadlocks;
+
   if not @@ Deadlock.JsonOutput.is_default () then
     DeadlockAnalysis.Result.out_json deadlocks @@ Deadlock.JsonOutput.get ()
   else ();
 
   Core.finalize lockset_res thread_res;
-  Profiler.finish ()
+  Profiler.finish ();
+  if Core0.Profile.get () then Profiler.report () else ()
 
 let run () =
   if Deadlock.Version.get () then show_version ()
