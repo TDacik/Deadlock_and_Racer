@@ -9,6 +9,7 @@ type t = {
   kind : access_kind;
   locksets: Lock.PowerSet.t;
   callstack : RelaxedCallstack.t;
+  precise : Bool.t;
 } [@@ deriving compare, equal]
 
 let get_base access = MemoryAddress.base access.address
@@ -34,17 +35,28 @@ end
 include Datatype.Collections(Self)
 
 let is_precise access =
+  if not access.precise then false
+  else
+  let base = get_base access in
   let offset = get_offset access in
   match Int_Intervals.project_singleton offset with
-    | Some _ -> true
+    | Some (x, y) ->
+      begin match Base.typeof base with
+        | Some typ when Cil.isArrayType typ ->
+          let size = Integer.of_int @@ Cil.bitsSizeOf @@ Cil.typeOf_array_elem typ in
+          let diff = Integer.sub y x in
+          Racer.debug "Base %a : size: %s, diff: %s" Base.pretty base (Integer.to_string size) (Integer.to_string diff);
+          Integer.ge size diff && access.precise
+        | _ -> true
+      end
     | None -> false
 
-let mk kind stmt address locksets callstack =
+let mk kind stmt address locksets callstack precise =
   let callstack = Callstack.push_event stmt callstack in
-  {address = address; kind = kind; locksets = locksets; callstack = callstack}
+  {address = address; kind = kind; locksets = locksets; callstack = callstack; precise = precise}
 
-let mk_read stmt address locksets callstack =
-  mk Read stmt address locksets callstack
+let mk_read stmt address locksets callstack precise =
+  mk Read stmt address locksets callstack precise
 
-let mk_write stmt address locksets callstack =
-  mk Write stmt address locksets callstack
+let mk_write stmt address locksets callstack precise =
+  mk Write stmt address locksets callstack precise

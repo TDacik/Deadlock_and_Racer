@@ -59,20 +59,16 @@ let is_local_malloc base =
     Cil.isPointerType var.vtype && not @@ var.vglob
   with _ -> false
 
+
+let is_unique_malloc access threads base = match base with
+  | Base.Allocated _ ->
+    let thread = MemoryAccess.get_thread access in
+    ThreadAnalysis.Result.is_unique threads thread
+  | _ -> true
+
+
 let is_alloced_array base = match base with
   | Base.Allocated (var, _, validity) -> Cil.isArrayType var.vtype
-    (*
-    let size = Integer.of_int @@ Cil.bytesSizeOf var.vtype in
-    begin match validity with
-    | Known (min, max) ->
-      let diff = Integer.sub max min in
-      Integer.gt diff size
-    | Variable v ->
-      let diff = Integer.sub v.max_alloc v.min_alloc in
-      Integer.gt diff size
-    | _ -> false
-    end
-    *)
   | _ -> false
 
 let is_may_race threads parallel self other =
@@ -81,22 +77,19 @@ let is_may_race threads parallel self other =
 let is_must_race threads parallel self other =
   let base = MemoryAccess.get_base self in
   let is_precise = MemoryAccess.is_precise self in
-  let is_local_malloc = is_local_malloc base in
   let is_allocated_array = is_alloced_array base in
   let are_parallel =
     ParallelAnalysis.Result.must_run_in_parallel parallel self.callstack other.callstack
   in
   Racer.debug ">  surely parallel: %b\n" are_parallel;
   Racer.debug ">  precise access: %b\n" is_precise;
-  Racer.debug ">  is local malloc: %b\n" is_local_malloc;
   Racer.debug ">  is allocted array: %b\n" is_allocated_array;
 
   is_race_base threads parallel Lock.PowerSet.flatten_union self other
   && is_precise
   && not (Base.is_weak base)
   && are_parallel
-  && not is_local_malloc
-  && not is_allocated_array
+  && is_unique_malloc self threads base
 
 let of_accesses kind access1 access2 =
   let base = MemoryAccess.get_base access1 in

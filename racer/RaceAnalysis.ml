@@ -79,12 +79,27 @@ module Result = struct
     in
     {res with states = states'}
 
+  let is_precise_update stmt accesses =
+    let is_ptr (t : Cil_types.typ) = match t with TPtr _ -> true | _ -> false in
+    List.map MemoryAddress.base accesses
+    |> (fun b ->
+        List.length b <= 1
+        || List.for_all (fun (b1, b2) ->
+             let v1 = Base.to_varinfo b1 in
+             let v2 = Base.to_varinfo b2 in
+             Base.equal b1 b2
+             || (not @@ Typ.equal v1.vtype v2.vtype)
+           ) (BatList.cartesian_product b b)
+       )
+
   let update_reads stmt callstack lockset res accesses =
-    List.map (fun a -> MemoryAccess.mk_read stmt a lockset callstack) accesses
+    let precise = is_precise_update stmt accesses in
+    List.map (fun a -> MemoryAccess.mk_read stmt a lockset callstack precise) accesses
     |> List.fold_left update_one res
 
   let update_writes stmt callstack lockset res accesses =
-    List.map (fun a -> MemoryAccess.mk_write stmt a lockset callstack) accesses
+    let precise = is_precise_update stmt accesses in
+    List.map (fun a -> MemoryAccess.mk_write stmt a lockset callstack precise) accesses
     |> List.fold_left update_one res
 
   (** Whenever possible, return write-write races *)
@@ -172,18 +187,27 @@ module Result = struct
     Yojson.Basic.(pretty_to_channel channel (to_json res));
     close_out channel
 
-  let find_max res =
+  let filter_shared threads res =
+    M.filter (fun _ (state, _) -> match state with
+      | State.Shared_modified _ -> true
+      | State.Exclusive owner -> not @@ ThreadAnalysis.Result.is_unique threads owner
+      | _ -> false
+    ) res
+
+  let find_max states =
     M.fold (fun base (_, accesses) (max_base, max_n) ->
       let n = AS.cardinal accesses in
       if n > max_n then (Some base, n)
       else (max_base, max_n)
-    ) res.states (None, -1)
+    ) states (None, -1)
 
-  let show_stats res =
-    match find_max res with
-      | (None, _) -> "  - no shared memory addresses"
+  let show_stats threads res =
+    let states = filter_shared threads res.states in
+    match find_max states with
+      | (None, _) ->
+        Format.asprintf "      - # shared bases: 0\n" (* Needed for scripts *)
       | (Some base, max) ->
-        Format.asprintf "      - # shared bases: %d\n" (M.cardinal res.states) ^
+        Format.asprintf "      - # shared bases: %d\n" (M.cardinal states) ^
         Format.asprintf "      - # max accesses: %d (%a)" max Base.pretty base
 
 end
@@ -285,7 +309,8 @@ module Make (ValueAnalysis : VALUE_ANALYSIS) = struct
       compute_thread ctx acc entry_point
     ) thread_graph init_res
     in
-    Racer.feedback "Checking resulting memory accesses for races:\n%s" (Result.show_stats res);
+    Racer.feedback "Checking resulting memory accesses for races:\n%s"
+      (Result.show_stats threads res);
     let races = Result.find_races res parallel_res threads in
     Racer.feedback "Race analysis finished";
     races
