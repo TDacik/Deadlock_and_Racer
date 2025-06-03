@@ -52,70 +52,12 @@ let is_thread_local base =
       end
     | _ -> false
 
-let cache = ref (None : Varinfo.Set.t option)
-
-class escapes_expr = object
-  inherit Visitor.frama_c_inplace
-
-  method! vexpr e = match (Cil.stripCasts e).enode with
-    | AddrOf (Var v, _) -> begin match !cache with
-      | None -> failwith "Internal error"
-      | Some c ->
-        Logger.debug ~level:5 "Adding escaping variable: %a" Varinfo.pretty v;
-        cache := Some (Varinfo.Set.add v c); DoChildren
-
-      end
-    | _ -> DoChildren
-
- end
-
-class is_referenced_visitor = object
-  inherit Visitor.frama_c_inplace
-
-  method! vstmt stmt =
-    let exprs = match stmt.skind with
-      | Instr (Set (lval, expr, _)) -> [expr]
-      | Instr (Call (_, {enode = Lval (Var fn, NoOffset); _}, exprs, _)) ->
-        if ConcurrencyModel.is_atomic_fn fn then []
-        else exprs
-      | Instr (Call (_, _, exprs, _)) -> exprs
-      | Instr (Local_init (_, ConsInit (fn, exprs, _), _)) ->
-        if ConcurrencyModel.is_atomic_fn fn then []
-        else exprs
-      | _ -> []
-    in
-    let check_expr = (fun e -> ignore @@ (new escapes_expr)#vexpr e) in
-    List.iter check_expr exprs;
-    DoChildren
-
-end
-
-let is_referenced var =
-  match !cache with
-  | None ->
-    let _ =  cache := Some Varinfo.Set.empty in
-    let file = Ast.get () in
-    let _  = Visitor.visitFramacFileSameGlobals (new is_referenced_visitor) file in
-    Varinfo.Set.mem var (Option.get !cache)
-  | Some _ -> Varinfo.Set.mem var (Option.get !cache)
-
-(** Simple  escape analysis *)
-let may_escape = function
-  | Var (var, _) -> is_referenced var
-  | Allocated (var, _, _) -> true
-    (*
-    begin match Cil_utils.find_allocation_target var with
-    | Some v -> v.vglob || v.vaddrof
-    | None -> true
-    end
-    *)
-  | _ -> false
 
 let keep_for_racer thread base =
   let not_ghost = not @@ is_ghost base in
   let not_atomic = not @@ is_atomic base in
   let not_thread_local = not @@ is_thread_local base in
-  let may_escape = may_escape base in
+  let may_escape = EscapeAnalysis.may_escape base in
   let global = Frama_c_kernel.Base.is_global base in
   let thread_arg = is_thread_arg thread base in
   let res =

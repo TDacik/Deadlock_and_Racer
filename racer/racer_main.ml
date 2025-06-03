@@ -14,6 +14,7 @@ let main () =
   let module ThreadAnalysis = ThreadAnalysis.Make(ValueAnalysis) in
   let module ParallelAnalysis = ParallelAnalysis.Make(ValueAnalysis) in
   let module LocksetAnalysis = LocksetAnalysis.Make(ValueAnalysis) in
+  let module EscapeAnalysis = EscapeAnalysis.Make(ValueAnalysis) in
   let module RaceAnalysis = RaceAnalysis.Make(ValueAnalysis) in
 
   (* TODO: some caching *)
@@ -25,6 +26,9 @@ let main () =
 
   let parallel_res = ParallelAnalysis.compute thread_graph in
   Profiler.add "May-run-in-parallel";
+
+  let _ = EscapeAnalysis.compute thread_graph in
+  Profiler.add "Escape analysis";
 
   let res = RaceAnalysis.compute thread_graph parallel_res lockset_res in
   RaceAnalysis.Result.report res;
