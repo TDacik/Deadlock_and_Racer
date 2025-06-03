@@ -52,7 +52,7 @@ module Self = struct
 
   let lval_to_base lval = match lval with
     | Var var, NoOffset -> Base.of_varinfo var
-    | _, _ -> failwith "TODO"
+    | _, _ -> failwith @@ Format.asprintf "%a" Lval.pretty lval
 
   (** TODO: this is a quick fix for issue with thread arguments *)
   let process_thread_arg thread base =
@@ -122,8 +122,8 @@ module Self = struct
     Syntactic.expr_reads ~local:true stmt expr
     |> normalise stmt
 
-  let check_imprecision () =
-    ImprecisionDetection.check_malloc ()
+  let check_imprecision () = ()
+    (*ImprecisionDetection.check_malloc ()*)
 
 end
 

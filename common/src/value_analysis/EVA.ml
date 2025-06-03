@@ -58,7 +58,6 @@ module Self = struct
         (Thread.InitialState.show initial_state);
       Old.set_results res
     with Not_found ->
-      let _ = Core0.debug "Not using cache..." in
       let _ = Analysis.compute () in
       let res = Old.get_results () in
       cache := Cache.add (thread, initial_state) res !cache
@@ -88,17 +87,41 @@ module Self = struct
 
   let is_reachable = Eva.is_reachable
 
+  (* TODO: Select first n values if loc is too big *)
   let concretise loc =
     Logger.debug "Concretizing locations %a" Location_Bytes.pretty loc;
-    match Location_Bytes.cardinal loc with
-      | None -> []
-      | Some n when n > Integer.of_int 12 -> [] (* TODO *)
-      | _ ->
+    match loc with
+    | Top (Base.SetLattice.Top, _) ->
+      [Base.null, Integer.zero;
+       Base.null, Integer.one;
+       Base.null, Integer.two]
+    | Top (s, _) ->
+      Base.SetLattice.fold List.cons s []
+      |> BatList.take 3
+      |> List.map (fun b -> (b, Integer.zero))
+    | _ ->
+        let seq = Location_Bytes.to_seq_i loc in
+        let elems = List.of_seq @@ Seq.take 3 seq in
+        let res = List.fold_left (fun acc (b, ival) ->
+          let offsets = List.of_seq @@ Seq.take 3 @@ Ival.to_int_seq ival in
+          let added = List.map (fun o -> (b, o)) offsets in
+          acc @ added
+        ) [] elems
+        in
+        let res = BatList.take 3 res in
+        Logger.debug "  Concretised to (%d):" (List.length res);
+        List.iter (fun (base, o) ->
+          Logger.debug "  > (%a, %s)" Base.pretty base (Integer.to_string o)
+        ) res;
+        res
+
+        (*
         Location_Bytes.fold_i (fun base offsets acc ->
           let ints = Ival.fold_int List.cons offsets [] in
           let xs = List.map (fun i -> (base, i)) ints in
           xs @ acc
         ) loc []
+        *)
 
   let concretise_zone zone =
     try Locations.Zone.fold_i (fun base offsets acc ->
@@ -118,10 +141,12 @@ module Self = struct
     |> Eva.as_cvalue
 
   let eval_expr_concretised ?callstack stmt expr =
+    Logger.debug "Evaluating %a" Exp.pretty expr;
     let cvalue = match callstack with
       | None -> eval_expr stmt expr
       | Some callstack -> eval_expr ~callstack stmt expr
     in
+    Logger.debug "Cvalue %a" Cvalue.V.pretty cvalue;
     concretise cvalue
 
   let stmt_state ?(after=false) ?callstack stmt =
@@ -135,6 +160,7 @@ module Self = struct
     |> Eva.eval_exp expr
     |> Eva.as_cvalue
     |> concretise
+    |> List.filter (fun (b, _) -> not @@ Base.is_null b)
     |> List.map (fun (b, _) -> Format.asprintf "%a" Base.pretty b)
     |> List.map Globals.Functions.find_by_name
 
@@ -147,6 +173,8 @@ module Self = struct
     let thread = get_active_thread () in
     concretise_zone zone
     |> List.filter (fun (base, _) -> BaseUtils.keep_for_racer thread base)
+    |> List.filter (fun (base, _) -> not @@ BaseUtils.is_thread_arg thread base)
+       (** TODO: Revisit this for other backends *)
 
   let memory_accesses ?(local=false) stmt =
     let open Locations in

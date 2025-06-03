@@ -1,5 +1,7 @@
 (* Syntactic backend answers all queries using just syntactical introspection of expressions.
  *
+ * TODO: context-sensitivity handling?
+ *
  * Author: Tomas Dacik (idacik@fit.vut.cz), 2024 *)
 
 open Cil_types
@@ -24,12 +26,9 @@ module Self = struct
     let entry_point = Thread.get_entry_point @@ get_active_thread () in
     BatList.mem_cmp Kernel_function.compare entry_point @@ CFG_utils.transitive_callers stmt
 
-  (** Extract all non-numerical bases *)
-  let eval_expr_concretised ?callstack _ expr =
-    Cil.extract_varinfos_from_exp expr
-    |> Varinfo.Set.filter (fun var -> not @@ Cil.isArithmeticType var.vtype)
-    |> Varinfo.Set.elements
-    |> List.map (fun var -> (Base.of_varinfo var, Integer.zero))
+  let eval_expr_concretised ?callstack stmt expr =
+    Imprecision.add_backend (Imprecision.Lock (stmt, expr));
+    []
 
   let eval_expr ?callstack stmt expr = Cvalue.V.top
 
@@ -50,7 +49,7 @@ module Self = struct
   let eval_call _ expr =
     let name = trim @@ Format.asprintf "%a" Printer.pp_exp expr in
     try [Globals.Functions.find_def_by_name name]
-    with Not_found -> []
+    with Not_found -> ValueAnalysis_utils.all_referenced_fns ()
 
   (** {2 Access extraction} *)
 
@@ -132,13 +131,6 @@ module Self = struct
     |> List.filter (fun (base, _) -> (BaseUtils.keep_for_racer thread base))
 
   let memory_accesses ?(local=false) stmt =
-    (*try
-      Logger.debug "R: %a : %a" Stmt.pretty stmt Locations.Zone.pretty (Inout.stmt_inputs stmt);
-      Logger.debug "W: %a : %a" Stmt.pretty stmt Locations.Zone.pretty (Inout.stmt_outputs stmt);
-      let reads = get_accesses local @@ Inout.stmt_inputs stmt in
-      let writes = get_accesses local @@ Inout.stmt_outputs stmt in
-      (reads, writes)
-    with _ ->*)
       let reads = compute_reads local stmt in
       let writes = compute_writes local stmt in
       (reads, writes)
@@ -151,8 +143,8 @@ module Self = struct
     |> List.filter (fun base -> local || BaseUtils.keep_for_racer thread base)
     |> List.map (fun b -> (b, Int_Intervals.top))
 
-  let check_imprecision () =
-    ImprecisionDetection.check_malloc ()
+  let check_imprecision () = ()
+    (*ImprecisionDetection.check_malloc ()*)
 
 end
 
