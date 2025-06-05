@@ -1,0 +1,22 @@
+name: Build
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5.1.0
+          dune-cache: true
+
+      - name: Install dependencies
+        run: opam install -y --deps-only --with-test .
+
+      - name: Build
+        run: opam exec -- dune build
