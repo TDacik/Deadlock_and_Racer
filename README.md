@@ -1,96 +1,38 @@
-# Deadlock
+# RacerF & DeadlockF
 
-<img align="right" width="200" src="http://excel.fit.vutbr.cz/submissions/2020/012/12_nahled.png">
-
-*Deadlock* is a static analyser for the detection of potential deadlocks in C programs implemented as a plugin of the [Frama-C](http://frama-c.com/) platform.
-
-The core algorithm is based on an existing tool [RacerX](https://web.stanford.edu/~engler/racerx-sosp03.pdf). The so-called lockset analysis traverses control flow graph and computes the set of locks held at any program point. When lock b is acquired with current lockset already containing lock a, dependency a -> b is added to lockgraph. Each cycle in this graph is then reported as a potential deadlock.
-
-The plugin uses [EVA](http://frama-c.com/value.html) (Value analysis plugin of Frama-C) to compute may-point-to information for parameters of locking operations. Because EVA can't natively analyse concurrent programs, we first identify all threads in a program and then run it for each thread separately with contexts of program points, where the thread was created. The result is then under-approximation, which doesn't take into account thread's interleavings. 
-
-## Example
-This example demonstrates output for the program with simple deadlock. The more complex example can be found [here](https://github.com/TDacik/Deadlock/wiki/example).
- 
-```C
-void * thread1(void *v)
-{
-    pthread_mutex_lock(&lock1);
-    pthread_mutex_lock(&lock2);
-    ...
-    pthread_mutex_unlock(&lock2);
-    pthread_mutex_unlock(&lock1);
-}
-
-void * thread2(void *v)
-{
-    pthread_mutex_lock(&lock2);
-    pthread_mutex_lock(&lock1);
-    ...
-    pthread_mutex_unlock(&lock1);
-    pthread_mutex_unlock(&lock2);
-}
-```
-#### Output:
-```
-[kernel] Parsing simple_deadlock.c (with preprocessing)
-[Deadlock] Deadlock analysis started
-[Deadlock] === Assumed threads: ===
-[Deadlock] main
-[Deadlock] thread1
-[Deadlock] thread2
-[Deadlock] === Lockgraph: ===
-[Deadlock] lock1 -> lock2
-[Deadlock] lock2 -> lock1
-[Deadlock] ==== Results: ====
-[Deadlock] Deadlock between threads thread1 and thread2:
-  
-  Trace of dependency (lock2 -> lock1):
-  In thread thread2:
-      Lock of lock2 (simple_deadlock.c:20)
-      Lock of lock1 (simple_deadlock.c:21)
-  
-  Trace of dependency (lock1 -> lock2):
-  In thread thread1:
-      Lock of lock1 (simple_deadlock.c:10)
-      Lock of lock2 (simple_deadlock.c:11)
-```
+*RacerF* and *DeadlockF* are static analysers for detection of data races and deadlocks in multi-threaded C programs with mutexes. Both tools are implemented as plugins of the [Frama-C](http://frama-c.com/) platform.
 
 ## Installation
-The current version is compatible with [Frama-C Vanadium](https://frama-c.com/fc-versions/vanadium.html), it's detailed installation guide can be found in [user manual](https://git.frama-c.com/pub/frama-c/blob/master/INSTALL.md) and requires Ocaml version at least 4.12. Besides Frama-C, *Deadlock* requires following opam packages to be installed:
-```
-ounit2
-containers
-```
 
-After installing dependencies and cloning this repositary, *Deadlock* can be installed as follows:
-```
-cd Deadlock
-make setup
-make
-make install
-```
+The recent versions of the plugins are compatible with [Frama-C 29.0 (Copper)](https://frama-c.com/fc-versions/copper.html). 
 
-You may also run Deadlock in docker either by using `docker run -it tdacik/deadlock` or by running `make docker` to build an image of the most recent version.  
+For installation, `opam` package manager and OCaml >= 5.1 is necessary. After cloning this repository, run `opam install .`
 
 ## Usage
-The simplest way to run the plugin is:
+
+The simplest way to run the plugins is:
 ``` 
+frama-c -racer source_file1.c source_file2.c ...
 frama-c -deadlock source_file1.c source_file2.c ...
-``` 
-For more advanced usage, see [list of command line options](https://github.com/TDacik/Deadlock/wiki/help) for tuning the analysis and [gui manual](https://github.com/TDacik/Deadlock/wiki/deadlock-gui) for visualisation of results in Frama-C's gui application.
+```
+
+Several commandline options can be specified. The options related to a specific plugin are prefixed `-racer` and `-deadlock`, respectively, the general options are prefixed by `-cc`.
 
 
 
 
 ## Related papers
-Dacík T. [Static Deadlock Detection in Frama-C](http://excel.fit.vutbr.cz/submissions/2020/012/12.pdf) In *Proceedings of Excel@FIT'20*. Brno University of Technology, Faculty of Information Technology. 2020
 
-Dacík T. [Static Analysis in the Frama-C Environment Focused on Deadlock Detection](https://www.fit.vut.cz/study/thesis/22928/.en) Bachelor's Thesis. Brno University of Technology, Faculty of Information Technology. 2020-07-10. Supervised by Vojnar Tomáš.
+* Tomáš Dacík and Tomáš Vojnar. [RacerF: Lightweight Static Data Race Detection for C Code](https://arxiv.org/pdf/2502.04905). ECOOP 2025.
+
+* Tomáš Dacík and Tomáš Vojnar. [RacerF: Data Race Detection with Frama-C (Competition Contribution)](https://arxiv.org/pdf/2502.20052). SV-COMP 2025.
+
+* Tomáš Dacík. [Static Analysis in the Frama-C Environment Focused on Deadlock Detection](https://www.fit.vut.cz/study/thesis/22928/.en). Bachelor's Thesis. Brno University of Technoloy. 2020. Supervised by Tomáš Vojnar.
 
 ## Contact
 If you have any questions, do not hesitate to contact the tool/method authors:
-* **Tomáš Dacík** <[xdacik00@stud.fit.vutbr.cz](mailto:xdacik00@stud.fit.vutbr.cz)>
-* [**Tomáš Vojnar**](https://www.fit.vut.cz/person/vojnar/) <[vojnar@fit.vutbr.cz](mailto:vojnar@fit.vutbr.cz)>
+* [**Tomáš Dacík**](https://www.fit.vut.cz/person/idacik/) <[idacik@fit.vut.cz](mailto:idacik@fit.vut.cz)>
+* [**Tomáš Vojnar**](https://www.muni.cz/lide/134390-tomas-vojnar) <[vojnar@fi.muni.cz](mailto:vojnar@fi.muni.cz)>
 
 ## License
 The plugin is available under MIT license.
