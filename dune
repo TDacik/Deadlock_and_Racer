@@ -41,7 +41,7 @@
 (install
   (package frama-c-racer)
   (section (site (frama-c share)))
-  (files (glob_files (models/*.yaml with_prefix "cc/models")))
+  (files (glob_files (models/** with_prefix "cc/models")))
 )
 
 
