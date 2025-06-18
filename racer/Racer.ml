@@ -2,7 +2,7 @@
  *
  * Author: Tomas Dacik (idacik@fit.vut.cz), 2024 *)
 
-let version = "2.1"
+let version = "2.2"
 
 module Self = Plugin.Register
   (struct
