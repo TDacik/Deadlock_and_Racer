@@ -17,6 +17,18 @@ frama-c -deadlock source_file1.c source_file2.c ...
 ```
 
 Several commandline options can be specified. The options related to a specific plugin are prefixed `-racer` and `-deadlock`, respectively, the general options are prefixed by `-cc`.
+Run `frama-c [racer|deadlock]-h to see more details.
+
+### Running via wrapper script
+The script *racerf.py* can be used to run RacerF using a combination of under- and over-approximating strategy as follows:
+``` 
+./scripts/racerf.py -machdep=[gcc_x86_32|gcc_x86_64] [--under|--over] [--debug] [frama-c-options] source_file.c
+```
+The options `--under` and `--over` run just under- and --over approximation respectively. 
+By default, the combined strategy is used.
+
+Currently only single source file can be analysed using the wrapper. 
+Moreover, machine model of Frama-C needs to be one of `gcc_x86_32` or `gcc_x86_64`.
 
 
 
