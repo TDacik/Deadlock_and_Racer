@@ -13,7 +13,7 @@ dev-repo: "git://github.com/TDacik/Deadlock.git"
 bug-reports: "https://github.com/TDacik/Deadlock/issues"
 
 depends: [
-    "ocaml" { >= "4.12.0" }
+    "ocaml" { >= "5.1.0" }
     "frama-c" { = "29.0" }
 
     "batteries"
