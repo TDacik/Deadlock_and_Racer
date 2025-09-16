@@ -1,20 +1,22 @@
 """Program transformations for under- and over-approximating analysis."""
 
 import os
-from subprocess import run
 
+from pathlib import Path
+from subprocess import run
+from tempfile import NamedTemporaryFile
 
 def transformation(config, name, source_file, options, header=""):
     """
     Generic transformation function.
-
-    TODO: don't generate the file in the working directory.
     """
     config.log(f"Running {name} transformation")
 
-    dirpath, filename = os.path.split(source_file)
-    newname = "__" + name + "_" + filename
-    path = os.path.join(dirpath, newname)
+    path = Path(source_file)
+    dirpath = path.parent
+    name = name + "_" + path.stem
+
+    tmp_file = NamedTemporaryFile(prefix=name, suffix=".c", delete=False, dir="/tmp")
 
     cmd = [
         config.framac_path,
@@ -26,14 +28,14 @@ def transformation(config, name, source_file, options, header=""):
         "-then",
         "-print",
         "-ocode",
-        path,
+        tmp_file.name,
     ]
 
     config.log(f"Running preprocessing with command: " + " ".join(cmd))
 
     _ = run(cmd)
 
-    with open(path, "r+") as f:
+    with open(tmp_file.name, "r+") as f:
         content = f.read()
         f.seek(0, 0)
         f.write("int tmp_0;\n")  # TODO: why those are needed?
@@ -41,7 +43,7 @@ def transformation(config, name, source_file, options, header=""):
         f.write(header)
         f.write(content)
 
-    return path
+    return tmp_file.name
 
 
 def transform_under_approx(config, source_file, options):
