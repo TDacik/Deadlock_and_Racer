@@ -117,10 +117,9 @@ class Runner:
             remove_if_exists("witness.graphml")
                 
             res2 = self.run_under_approx(source_file, options)
-            #print(res2.stdout)
+            print(res2.stdout)
             
             if "[racer] Data race " in res2.stdout:
-                print(res2.stdout)
                 return res2.returncode
 
             # We need to print this to match our short-sighted defininition of Benchexec's tool info
