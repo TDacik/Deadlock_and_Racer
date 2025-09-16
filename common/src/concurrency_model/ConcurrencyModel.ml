@@ -33,15 +33,12 @@ type stmt =
   | Call of call_type * Lval.t option * Exp.t * Exp.t list
 
   | Return
-  | Exit
   | Other
 
 let classify_call ?lval fn args =
   let fn_name = Format.asprintf "%a" Printer.pp_exp fn in
 
-  if fn_name = "exit" then Exit
-
-  else if Lock_functions.mem fn_name then
+  if Lock_functions.mem fn_name then
     let pos, kind = Lock_functions.find fn_name in
     Lock (List.nth args pos, kind, lval)
 

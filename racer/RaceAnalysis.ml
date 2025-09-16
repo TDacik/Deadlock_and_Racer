@@ -287,10 +287,12 @@ module Make (ValueAnalysis : VALUE_ANALYSIS) = struct
       List.fold_left (compute_stmt ctx) res' stmt.succs
 
   and compute_function ctx res fn callsite =
-    Racer.debug ">   Computing function %a" Kernel_function.pretty fn;
-    let stmt = Kernel_function.find_first_stmt fn in
-    let ctx' = Context.push_call fn callsite ctx in
-    compute_stmt ctx' res stmt
+    if Kernel_function.has_noreturn_attr fn then res (* TODO: do not continue *)
+    else
+      let _ = Racer.debug ">   Computing function %a" Kernel_function.pretty fn in
+      let stmt = Kernel_function.find_first_stmt fn in
+      let ctx' = Context.push_call fn callsite ctx in
+      compute_stmt ctx' res stmt
 
   and compute_thread ctx res fn =
     let stmt = Kernel_function.find_first_stmt fn in

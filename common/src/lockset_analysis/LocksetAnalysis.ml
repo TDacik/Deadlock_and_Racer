@@ -293,6 +293,9 @@ module Make (ValueAnalysis : VALUE_ANALYSIS) = struct
     let ctx' = Context.push_call ctx fn callsite in
     if Callstack.mem_call fn ctx.callstack then
       Lock.PowerSet.singleton ctx.lockset, res
+    else if Kernel_function.has_noreturn_attr fn then
+      let _ = Logger.debug ">   Stopping at noreturn function %a" Kernel_function.pretty fn in
+      Lock.PowerSet.empty, res
     else if not @@ Kernel_function.has_definition fn then
       let _ = Logger.debug ">   Skipping external function %a" Kernel_function.pretty fn in
       Lock.PowerSet.singleton ctx.lockset, res

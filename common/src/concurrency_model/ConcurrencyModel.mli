@@ -34,7 +34,6 @@ type stmt =
   | Call of call_type * Lval.t option * Exp.t * Exp.t list
 
   | Return
-  | Exit
   | Other
 
 val classify_stmt : Stmt.t -> stmt
