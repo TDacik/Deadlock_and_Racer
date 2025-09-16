@@ -4,7 +4,7 @@
 
 open WitnessUtils
 
-let machdep () = match Cil.theMachine.theMachine.machdep_name with
+let machdep () = match Machine.machdep_name () with
   | "machdep_gcc_x86_32" -> "32bit"
   | "machdep_gcc_x86_64" -> "64bit"
   | other -> other

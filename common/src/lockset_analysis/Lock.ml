@@ -18,7 +18,7 @@ let global_lock =
   fun () -> match !cache with
     | Some lock -> lock
     | None ->
-      let base = Base.of_varinfo @@ Cil.makeGlobalVar "__racerf_global_lock" Cil.voidType in
+      let base = Base.of_varinfo @@ Cil.makeGlobalVar "__racerf_global_lock" Cil_const.voidType in
       let lock = {
         base = base;
         kind = {blocking = true; read_lock = false; reentrant = true};
