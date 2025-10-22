@@ -14,7 +14,7 @@ bug-reports: "https://github.com/TDacik/Deadlock/issues"
 
 depends: [
     "ocaml" { >= "5.1.0" }
-    "frama-c" { = "29.0" }
+    "frama-c" { = "30.0" }
 
     "batteries"
     "yojson"
