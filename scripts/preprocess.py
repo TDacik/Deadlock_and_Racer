@@ -74,10 +74,10 @@ def preprocess(orig_path, lines):
         else:
             new_line = line
 
-            for (original, new) in translation:
+            for original, new in translation:
                 new_line = new_line.replace(original, new)
 
-            for (line_pattern, pattern, target) in translation_re:
+            for line_pattern, pattern, target in translation_re:
                 for m in re.findall(line_pattern, new_line):
                     print(
                         "[Preprocessor] Replacing VLA with fixed sized array: "
@@ -91,7 +91,9 @@ def preprocess(orig_path, lines):
 
     _, filename = os.path.split(orig_path)
     filename = prefix + filename
-    tmp_file = NamedTemporaryFile(prefix=filename, suffix=".c", delete=False, dir="/tmp")
+    tmp_file = NamedTemporaryFile(
+        prefix=filename, suffix=".c", delete=False, dir="/tmp"
+    )
 
     with open(tmp_file.name, "w") as f:
         f.write("".join(res))

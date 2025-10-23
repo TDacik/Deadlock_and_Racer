@@ -19,11 +19,13 @@ SELF = os.path.dirname(os.path.realpath(__file__))
 OPAM_SYMLINK = "/tmp/_opam"
 OPAM_PATH = os.path.abspath(os.path.join(SELF, "_opam/"))
 
+
 def remove_if_exists(path):
     try:
         os.remove(path)
     except FileNotFoundError:
         pass
+
 
 class Runner:
     def __init__(self, sv_comp_mode=False, debug=False):
@@ -100,12 +102,20 @@ class Runner:
 
     def run_over_approx(self, source_file, options, orig_source_file):
         source_file_over = transform_over_approx(self, source_file, options)
-        options = options + ["-cc-thread-approx=over", "-cc-orig-sources", orig_source_file]
+        options = options + [
+            "-cc-thread-approx=over",
+            "-cc-orig-sources",
+            orig_source_file,
+        ]
         return self.run_racer_once(source_file_over, options)
 
     def run_under_approx(self, source_file, options, orig_source_file):
         source_file_under = transform_under_approx(self, source_file, options)
-        options = options + ["-cc-thread-approx=under", "-cc-orig-sources", orig_source_file]
+        options = options + [
+            "-cc-thread-approx=under",
+            "-cc-orig-sources",
+            orig_source_file,
+        ]
         return self.run_racer_once(source_file_under, options)
 
     def run_racer(self, source_file, options, args, orig_source_file):
@@ -117,9 +127,9 @@ class Runner:
             res = self.run_under_approx(source_file, optionsm, orig_source_file)
             print(res.stdout)
             return res.returncode
-        else: # Run both
+        else:  # Run both
             res1 = self.run_over_approx(source_file, options, orig_source_file)
-            print(res1.stdout) # TODO: stderr?
+            print(res1.stdout)  # TODO: stderr?
             if "[racer] Data race " not in str(res1.stdout):
                 return res1.returncode
 
@@ -152,6 +162,7 @@ class Runner:
                 print("Initialization of _opam symlink failed")
                 raise Exception
 
+
 def parse_args():
     args = sys.argv[1:]
     is_script_arg = lambda x: x.startswith("--")
@@ -171,6 +182,7 @@ def parse_args():
     parser.add_argument("--over-approx", action="store_true")
     return parser.parse_args(script_args), racerf_args
 
+
 def main():
     args, racerf_args = parse_args()
     runner = Runner(sv_comp_mode=args.sv_comp, debug=args.debug)
@@ -186,6 +198,7 @@ def main():
             exit(1)
         res = runner.run_racer(sources[0], options, args, orig_sources[0])
         exit(res)
+
 
 if __name__ == "__main__":
     main()

@@ -6,6 +6,7 @@ from pathlib import Path
 from subprocess import run
 from tempfile import NamedTemporaryFile
 
+
 def transformation(config, name, source_file, options, header=""):
     """
     Generic transformation function.
