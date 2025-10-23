@@ -1,7 +1,5 @@
 #!/usr/bin/python3
 
-"""Handling of some features not supported by Frama-C."""
-
 import os
 import re
 import sys
@@ -53,14 +51,14 @@ translation = [
 
 
 # Frama-C does not support variable length arrays at non-final fields. We replace them by
-# arrays of small constant size (10).
+# arrays of constant size 2**32.
 #
 # We need to be careful to do not modify array accesses.
 translation_re = [
     (
         r" *(?:unsigned|signed){0,1}\s*(?:char|int|short|long|long long|float|double|void|struct)[^;=\)\(]*\s*\[0U{0,1}\] *;",
         r"0U{0,1}",
-        f"10",
+        f"{(2**32)-1}",
     ),
 ]
 
@@ -91,23 +89,21 @@ def preprocess(orig_path, lines):
         res.append(new_line)
 
     path = Path(orig_path)
-    tmp_file = NamedTemporaryFile(prefix=path.stem, suffix=".pp.c", delete=False, dir="/tmp")
+    tmp_file = NamedTemporaryFile(
+        prefix=path.stem, suffix=".pp.c", delete=False, dir="/tmp"
+    )
 
     with open(tmp_file.name, "w") as f:
         f.write("".join(res))
 
     return tmp_file.name
 
+
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         exit(1)
 
-    path = sys.argv[1]
-
-    with open(path, "r") as f:
-        lines = f.readlines()
-
-    res = preprocess(path, lines)
+    res = preprocess(sys.argv[1])
 
     if res is None:
         print("No change")

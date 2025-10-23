@@ -32,8 +32,10 @@ let write_header fmt =
   write_line fmt "architecture" "architecture" "string" "graph";
 
   write_line fmt "entry" "isEntryNode" "boolean" "node" ~default:"false";
+  write_line fmt "enterFunction" "enterFunction" "string" "edge";
+  write_line fmt "createThread" "createThread" "string" "edge";
   write_line fmt "violation" "isViolationNode" "boolean" "node" ~default:"false";
-  write_line fmt "endline" "endline" "int" "node"
+  write_line fmt "endline" "endline" "int" "edge"
 
 let write_nodes fmt race =
   let open Race in

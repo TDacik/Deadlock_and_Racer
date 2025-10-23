@@ -40,4 +40,4 @@ def check_and_get_sources(cmdline):
             source_files.append(arg)
         else:
             options.append(arg)
-    return check_sources(source_files), options
+    return check_sources(source_files), options, source_files

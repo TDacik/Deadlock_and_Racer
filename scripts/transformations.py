@@ -6,6 +6,7 @@ from pathlib import Path
 from subprocess import run
 from tempfile import NamedTemporaryFile
 
+
 def transformation(config, name, source_file, options, header=""):
     """
     Generic transformation function.
@@ -16,7 +17,9 @@ def transformation(config, name, source_file, options, header=""):
     suffix = f".{name}.c"
 
     print(path.stem)
-    tmp_file = NamedTemporaryFile(prefix=path.stem, suffix=suffix, delete=False, dir="/tmp")
+    tmp_file = NamedTemporaryFile(
+        prefix=path.stem, suffix=suffix, delete=False, dir="/tmp"
+    )
 
     cmd = [
         config.framac_path,

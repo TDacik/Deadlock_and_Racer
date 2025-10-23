@@ -14,6 +14,11 @@ from subprocess import run, PIPE, STDOUT
 from check_sources import check_and_get_sources
 from transformations import transform_under_approx, transform_over_approx
 
+# SV-COMP mode constants
+SELF = os.path.dirname(os.path.realpath(__file__))
+OPAM_SYMLINK = "/tmp/_opam"
+OPAM_PATH = os.path.abspath(os.path.join(SELF, "_opam/"))
+
 
 def remove_if_exists(path):
     try:
@@ -21,14 +26,19 @@ def remove_if_exists(path):
     except FileNotFoundError:
         pass
 
+
 class Runner:
-    def __init__(self, svcomp_mode=False, debug=False):
-        self.svcomp_mode = svcomp_mode
+    def __init__(self, sv_comp_mode=False, debug=False):
+        self.sv_comp_mode = sv_comp_mode
         self.debug = debug
-        if svcomp_mode:
-            assert False # TODO
+
+        if sv_comp_mode:
+            self.framac_path = os.path.join(SELF, "_opam/bin/frama-c")
+            self.models_path = os.path.join(SELF, "models")
+            self.libc_path = os.path.join(SELF, "_opam/share/frama-c/share/libc")
             return
-        
+
+        # Normal mode
         self.framac_path = "frama-c"
         try:
             p = run(["frama-c", "-print-share-path"], capture_output=True)
@@ -47,7 +57,7 @@ class Runner:
 
     def __str__(self):
         return f"Binary: {self.framac_path}\nLib: {self.libc_path}\nModels: {self.models_path}"
-   
+
     def log(self, msg):
         color = "\033[96m"
         white = "\033[0m"
@@ -90,35 +100,46 @@ class Runner:
         process = run(cmd, stdout=PIPE, stderr=STDOUT, universal_newlines=True)
         return process
 
-    def run_over_approx(self, source_file, options):
+    def run_over_approx(self, source_file, options, orig_source_file):
         source_file_over = transform_over_approx(self, source_file, options)
-        return self.run_racer_once(source_file_over, options + ["-cc-thread-approx=over"])
+        options = options + [
+            "-cc-thread-approx=over",
+            "-cc-orig-sources",
+            orig_source_file,
+        ]
+        return self.run_racer_once(source_file_over, options)
 
-    def run_under_approx(self, source_file, options):
+    def run_under_approx(self, source_file, options, orig_source_file):
         source_file_under = transform_under_approx(self, source_file, options)
-        return self.run_racer_once(source_file_under, options + ["-cc-thread-approx=under"])
-        
+        options = options + [
+            "-cc-thread-approx=under",
+            "-cc-orig-sources",
+            orig_source_file,
+        ]
+        return self.run_racer_once(source_file_under, options)
 
-    def run_racer(self, source_file, options, args):
+    def run_racer(self, source_file, options, args, orig_source_file):
         if args.over_approx:
-            res = self.run_over_approx(source_file, options)
+            res = self.run_over_approx(source_file, options, orig_source_file)
             print(res.stdout)
+            return res.returncode
         elif args.under_approx:
-            res = self.run_under_approx(source_file, options)
+            res = self.run_under_approx(source_file, optionsm, orig_source_file)
             print(res.stdout)
-        else: # Run both
-            res1 = self.run_over_approx(source_file, options)
-            print(res1.stdout) # TODO: stderr?
+            return res.returncode
+        else:  # Run both
+            res1 = self.run_over_approx(source_file, options, orig_source_file)
+            print(res1.stdout)  # TODO: stderr?
             if "[racer] Data race " not in str(res1.stdout):
                 return res1.returncode
-        
+
             self.log("Over-approximation was inconclusive\n")
             # Remove possible witness from over-approx
             remove_if_exists("witness.graphml")
-                
-            res2 = self.run_under_approx(source_file, options)
+
+            res2 = self.run_under_approx(source_file, options, orig_source_file)
             print(res2.stdout)
-            
+
             if "[racer] Data race " in res2.stdout:
                 return res2.returncode
 
@@ -130,7 +151,7 @@ class Runner:
         """
         We need to create symlink to _opam in /tmp to deal with absolute paths".
         """
-        if not self.svcomp_mode:
+        if not self.sv_comp_mode:
             return
 
         if not os.path.exists(OPAM_SYMLINK):
@@ -141,35 +162,43 @@ class Runner:
                 print("Initialization of _opam symlink failed")
                 raise Exception
 
+
 def parse_args():
     args = sys.argv[1:]
     is_script_arg = lambda x: x.startswith("--")
 
-    script_args = filter(is_script_arg, args)
-    racerf_args = filter(lambda x: not is_script_arg(x), args)
+    # We silently assume that valueas are passed as --opt=value
+    script_args = list(filter(is_script_arg, args))
+    racerf_args = list(filter(lambda x: not is_script_arg(x), args))
+
+    if not any(arg.startswith("-machdep") for arg in racerf_args):
+        racerf_args.append("-machdep=gcc_x86_32")
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--version", action="store_true")
     parser.add_argument("--debug", action="store_true")
-    parser.add_argument("--svcomp", action="store_true")
+    parser.add_argument("--sv-comp", action="store_true")
     parser.add_argument("--under-approx", action="store_true")
     parser.add_argument("--over-approx", action="store_true")
     return parser.parse_args(script_args), racerf_args
 
+
 def main():
     args, racerf_args = parse_args()
-    runner = Runner(svcomp_mode=args.svcomp, debug=args.debug)
+    runner = Runner(sv_comp_mode=args.sv_comp, debug=args.debug)
     runner.log(str(runner))
     runner.setup()
     if args.version:
         runner.version()
     else:
-        sources, options = check_and_get_sources(racerf_args)
+        sources, options, orig_sources = check_and_get_sources(racerf_args)
         if len(sources) != 1:
+            print(sources)
             print("Currently, only one source file can be analysed by this wrapper")
             exit(1)
-        res = runner.run_racer(sources[0], options, args)
+        res = runner.run_racer(sources[0], options, args, orig_sources[0])
         exit(res)
+
 
 if __name__ == "__main__":
     main()
