@@ -1,10 +1,10 @@
 #!/usr/bin/python3
 
-"""Handling of some features not supported by Frama-C."""
-
 import os
 import re
 import sys
+
+from tempfile import NamedTemporaryFile
 
 prefix = "__preprocessed_"
 
@@ -52,14 +52,14 @@ translation = [
 
 
 # Frama-C does not support variable length arrays at non-final fields. We replace them by
-# arrays of small constant size (10).
+# arrays of constant size 2**32.
 #
 # We need to be careful to do not modify array accesses.
 translation_re = [
     (
         r" *(?:unsigned|signed){0,1}\s*(?:char|int|short|long|long long|float|double|void|struct)[^;=\)\(]*\s*\[0U{0,1}\] *;",
         r"0U{0,1}",
-        f"10",
+        f"{(2**32)-1}",
     ),
 ]
 
@@ -74,10 +74,10 @@ def preprocess(orig_path, lines):
         else:
             new_line = line
 
-            for original, new in translation:
+            for (original, new) in translation:
                 new_line = new_line.replace(original, new)
 
-            for line_pattern, pattern, target in translation_re:
+            for (line_pattern, pattern, target) in translation_re:
                 for m in re.findall(line_pattern, new_line):
                     print(
                         "[Preprocessor] Replacing VLA with fixed sized array: "
@@ -89,26 +89,21 @@ def preprocess(orig_path, lines):
 
         res.append(new_line)
 
-    dir_path, filename = os.path.split(orig_path)
+    _, filename = os.path.split(orig_path)
     filename = prefix + filename
-    path = os.path.join(dir_path, filename)
+    tmp_file = NamedTemporaryFile(prefix=filename, suffix=".c", delete=False, dir="/tmp")
 
-    with open(path, "w") as f:
+    with open(tmp_file.name, "w") as f:
         f.write("".join(res))
 
-    return path
+    return tmp_file.name
 
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         exit(1)
 
-    path = sys.argv[1]
-
-    with open(path, "r") as f:
-        lines = f.readlines()
-
-    res = preprocess(path, lines)
+    res = preprocess(sys.argv[1])
 
     if res is None:
         print("No change")
