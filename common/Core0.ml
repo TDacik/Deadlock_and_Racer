@@ -98,3 +98,12 @@ module ContextDepth = Self.Int
     let help = "TODO"
     let default = 1
   end)
+
+module OriginalSources = Self.Filepath_list
+  (struct
+    let option_name = "-cc-orig-sources"
+    let arg_name = "source file list"
+    let help = ""
+    let existence = Frama_c_kernel.Filepath.Must_exist
+    let file_kind = "source file"
+  end)
