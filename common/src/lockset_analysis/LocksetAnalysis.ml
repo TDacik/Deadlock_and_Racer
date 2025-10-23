@@ -318,6 +318,13 @@ module Make (ValueAnalysis : VALUE_ANALYSIS) = struct
     let stmt = Kernel_function.find_first_stmt fn in
     let lss, res = analyse_stmt ctx res stmt in
     let res' = Result.add_fn res ctx lss in
+
+    (** TODO: inter/union *)
+    let unreleased_locks = Lock.PowerSet.flatten_union lss in
+    (if not @@ Lock.Set.is_empty unreleased_locks then
+      Imprecision.add (UnreleasedLock (fn, Lock.Set.choose unreleased_locks))
+    );
+
     lss, res'
 
   let compute threads =
