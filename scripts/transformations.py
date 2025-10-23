@@ -13,10 +13,10 @@ def transformation(config, name, source_file, options, header=""):
     config.log(f"Running {name} transformation")
 
     path = Path(source_file)
-    dirpath = path.parent
-    name = name + "_" + path.stem
+    suffix = f".{name}.c"
 
-    tmp_file = NamedTemporaryFile(prefix=name, suffix=".c", delete=False, dir="/tmp")
+    print(path.stem)
+    tmp_file = NamedTemporaryFile(prefix=path.stem, suffix=suffix, delete=False, dir="/tmp")
 
     cmd = [
         config.framac_path,

@@ -6,7 +6,8 @@ import os
 import re
 import sys
 
-prefix = "__preprocessed_"
+from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 translation = [
     ("_Atomic bool", "atomic_bool"),
@@ -89,15 +90,13 @@ def preprocess(orig_path, lines):
 
         res.append(new_line)
 
-    dir_path, filename = os.path.split(orig_path)
-    filename = prefix + filename
-    path = os.path.join(dir_path, filename)
+    path = Path(orig_path)
+    tmp_file = NamedTemporaryFile(prefix=path.stem, suffix=".pp.c", delete=False, dir="/tmp")
 
-    with open(path, "w") as f:
+    with open(tmp_file.name, "w") as f:
         f.write("".join(res))
 
-    return path
-
+    return tmp_file.name
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
