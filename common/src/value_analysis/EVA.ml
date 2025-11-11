@@ -77,7 +77,7 @@ module Self = struct
       end
       else
         let entry_point = Thread.get_entry_point thread in
-        let entry_point_name = Thread.show thread in
+        let entry_point_name = Thread.get_name thread in
         let globals, arg = get_initial_state thread in
         Globals.set_entry_point entry_point_name false;
         Old.set_initial_state globals;

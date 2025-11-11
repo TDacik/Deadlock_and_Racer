@@ -104,8 +104,27 @@ module Result = struct
       Kernel_function.equal fn fn'
     ) res.fn_summaries
 
-  let stmt_locksets res ?callstack ?state stmt =
+  let filter_trylocks state lss =
     let open Lock in
+    let check_status lock = match lock.status, lock.kind.blocking with
+      |  _, true -> true
+      | None, _ -> true
+      | Some status, false ->
+        Eva.Results.in_cvalue_state state
+        |> Eva.Results.eval_lval status
+        |> Eva.Results.as_ival
+        |> (function
+             | Ok x when Ival.is_zero x -> true
+             | Ok x -> false
+             | Error error ->
+               Imprecision.add (Imprecision.TryLock (Eva.Results.string_of_error error));
+               Core0.debug "State: %a\n" Cvalue.Model.pretty state;
+               true
+             )
+       in
+       Lock.PowerSet.map (Lock.Set.filter check_status) lss
+
+  let stmt_locksets res ?callstack ?state stmt =
     let lss =
       filter_stmt res stmt callstack
       |> StatementSummaries.bindings
@@ -115,24 +134,7 @@ module Result = struct
     (* Filter non-blocking locks based on their status in the state. *)
     match state with
       | None -> lss
-      | Some state ->
-        let check_status lock = match lock.status, lock.kind.blocking with
-          |  _, true -> true
-          | None, _ -> true
-          | Some status, false ->
-            Eva.Results.in_cvalue_state state
-            |> Eva.Results.eval_lval status
-            |> Eva.Results.as_ival
-            |> (function
-                | Ok x when Ival.is_zero x -> true
-                | Ok x -> false
-                | Error error ->
-                  Imprecision.add (Imprecision.TryLock (Eva.Results.string_of_error error));
-                  Core0.debug "State: %a\n" Cvalue.Model.pretty state;
-                  true
-                )
-         in
-         Lock.PowerSet.map (Lock.Set.filter check_status) lss
+      | Some state -> filter_trylocks state lss
 
   let stmt_must_lockset res stmt =
     Lock.PowerSet.flatten_inter @@ stmt_locksets res stmt
@@ -289,7 +291,15 @@ module Make (ValueAnalysis : VALUE_ANALYSIS) = struct
          branch, we progate the result and join abstract contexts. Note that for
          recursive call, we need to use ctx' ! *)
       let visited = stmt :: visited in
-      let lss_final, res_final = BatList.cartesian_product stmt.succs (Lock.PowerSet.elements lss)
+      let succs = match stmt.skind with
+        (*| If (e, then_b, else_b, _) ->
+          let v = ValueAnalysis.eval_expr ~callstack:ctx.callstack stmt e in
+          if not @@ Cvalue.V.contains_zero v then [List.nth stmt.succs 0]
+          else if not @@ Cvalue.V.contains_non_zero v then [List.nth stmt.succs 1]
+          else stmt.succs*)
+        | _ -> stmt.succs
+      in
+      let lss_final, res_final = BatList.cartesian_product succs (Lock.PowerSet.elements lss)
       |> List.fold_left (fun (lss_acc, res_acc) (stmt, ls) ->
         let ctx' = {ctx with lockset = ls} in
         let lss', res'' = analyse_stmt ~visited ctx' res_acc stmt in
