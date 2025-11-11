@@ -79,9 +79,10 @@ let classify_call ?lval fn args =
   else if AtomicSequenceEnd.mem fn_name then
     Atomic_seq_end
 
-  (** Needs to be after sequences! *)
+  (** Needs to be after sequences!
   else if AtomicFunctions.exists (fun a -> Str.string_match (Str.regexp a) fn_name 0) then
     Atomic_call (fn, args)
+  *)
 
   else
     let call_type = match fn.enode with

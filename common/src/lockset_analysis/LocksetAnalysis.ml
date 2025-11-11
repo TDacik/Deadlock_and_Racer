@@ -235,15 +235,21 @@ module Make (ValueAnalysis : VALUE_ANALYSIS) = struct
   (** Fork analysis for each possible value of called function. We propagate
       result and join abstract context. Not that for recursive call, we need
       to use ctx, not ctx_acc! *)
-  and update_on_call ctx res callsite callee =
+  and update_on_call ?(atomic=false) ctx res callsite callee =
     let callee_values = ValueAnalysis.eval_call callsite callee in
     match callee_values with
       | [] -> Lock.PowerSet.singleton ctx.lockset, res
       | _ ->
-        List.fold_left (fun (lss_acc, res_acc) callee ->
-          let lss, res' = analyse_function ctx res_acc callee callsite in
-          Lock.PowerSet.union lss lss_acc, res'
-        ) (Lock.PowerSet.empty, res) callee_values
+        let lss_final, res_final =
+          List.fold_left (fun (lss_acc, res_acc) callee ->
+            let lss, res' = analyse_function ctx res_acc callee callsite in
+            Lock.PowerSet.union lss lss_acc, res'
+          ) (Lock.PowerSet.empty, res) callee_values
+        in
+        if atomic then
+          let lss_final = Lock.PowerSet.map (Lock.Set.remove (Lock.global_lock ())) lss_final in
+          lss_final, res_final
+        else lss_final, res_final
 
   and analyse_stmt ?(visited=[]) ctx res stmt =
     if BatList.mem_cmp Stmt.compare stmt visited then
@@ -262,6 +268,10 @@ module Make (ValueAnalysis : VALUE_ANALYSIS) = struct
      let lss, res' = match ConcurrencyModel.classify_stmt stmt with
         | Lock (lock, kind, status) -> update_on_lock ctx res stmt lock kind status
         | Unlock lock -> update_on_unlock ctx res stmt lock
+        | Call (Direct kf, _, callee, _)
+          when ConcurrencyModel.is_atomic_fn @@ Kernel_function.get_vi kf ->
+            let lockset = Lock.Set.add (Lock.global_lock ()) ctx.lockset in
+            update_on_call ~atomic:true {ctx with lockset} res stmt callee
         | Call (_, _, callee, _) -> update_on_call ctx res stmt callee
         | Atomic_seq_start -> Lock.PowerSet.add_each ctx.lockset [Lock.global_lock ()], res
         | Atomic_seq_end -> Lock.PowerSet.remove_each ctx.lockset [Lock.global_lock ()], res

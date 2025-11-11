@@ -17,6 +17,7 @@ type t =
   | TryLock of string
   | Malloc
   | UnreleasedLock of Kernel_function.t * Lock.t
+  | AtomicFnWithBody of Kernel_function.t
 
   | Backend of t
 
@@ -72,6 +73,8 @@ let rec show = function
   | UnreleasedLock (kf, lock) ->
     Format.asprintf "Thread %a did not released mutex %a (possible deadlock)"
       Kernel_function.pretty kf Lock.pp lock
+  | AtomicFnWithBody kf ->
+    Format.asprintf "Atomic function with implementation %a" Kernel_function.pretty kf
 
   | Backend imprecision ->
     Format.asprintf "%s (not supported by the backend)" (show imprecision)
