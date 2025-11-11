@@ -221,14 +221,45 @@ module Make (ValueAnalysis : VALUE_ANALYSIS) = struct
     let state = ValueAnalysis.stmt_state stmt ~callstack in
     LocksetAnalysis.Result.stmt_locksets ~callstack ~state ctx.locksets stmt
 
-  let update_on_access ctx res stmt =
-    let reads, writes = match stmt.skind with
-      | Instr _ | Return _ -> ValueAnalysis.memory_accesses stmt
-      | If (e, _, _, _) | Switch (e, _, _, _) -> ValueAnalysis.expr_reads stmt e, []
-      | _ -> [], []
+  let stmt_reads stmt : (MemoryAddress.t * bool) list =
+    let rec get_reads_of_init = function
+      | SingleInit exp -> [exp]
+      | CompoundInit (_, inits) -> List.concat_map get_reads_of_init @@ List.map snd inits
     in
+    let get_reads_of_local_init = function
+      | AssignInit init -> get_reads_of_init init
+      | ConsInit (_, exps, _) -> exps
+    in
+    let get_reads_of_call fn args =
+      let args = List.filter (fun e -> not @@ Cil.isPointerType @@ Cil.typeOf e) args in
+      match fn.enode with
+      | Lval (Var _, _) -> args
+      | Lval (Mem fn, _) -> fn :: args
+    in
+    let reads = match stmt.skind with
+      | Instr (Set (_, rhs, _)) -> [rhs]
+      | Instr (Call (_, fn, args, _)) -> get_reads_of_call fn args
+      | Instr (Local_init (_, init, _)) -> get_reads_of_local_init init
+      | Return (Some exp, _) -> [exp]
+      | If (e, _, _, _) | Switch (e, _, _, _) -> [e]
+      | _ -> []
+    in
+    let atoms = List.concat_map CFG_utils.extract_atomic_expressions reads in
+    let atoms_reads = List.map (ValueAnalysis.expr_reads stmt) atoms in
+    List.fold_left (fun acc accesses ->
+      let precise = Result.is_precise_update stmt accesses in
+      acc @ List.map (fun a -> (a, precise)) accesses
+    ) [] atoms_reads
+
+  let update_on_access ctx res stmt =
+    let reads = stmt_reads stmt in
+    let writes = match stmt.skind with
+      | Instr _ -> snd @@ ValueAnalysis.memory_accesses stmt
+      | _ -> []
+    in
+
     Racer.debug ">     Accesses:";
-    Racer.debug ">       - Reads: %a" MemoryAddress.pp_list reads;
+    Racer.debug ">       - Reads: %a" MemoryAddress.pp_list (List.map fst reads);
     Racer.debug ">       - Writes: %a" MemoryAddress.pp_list writes;
 
     let lss = stmt_lockset ctx stmt in
@@ -236,40 +267,36 @@ module Make (ValueAnalysis : VALUE_ANALYSIS) = struct
     let res' = Result.update_reads stmt ctx.callstack lss res reads in
     Result.update_writes stmt ctx.callstack lss res' writes
 
-  let rec update_on_call ctx res stmt typ lval fn args =
-    let reads1 = match typ with
-      | Direct kf -> []
-      | Extern _ -> []
-      | Pointer ptr -> ValueAnalysis.expr_reads stmt ptr
-    in
-    let writes1 = match lval with
-      | None -> []
-      | Some lval ->
-        let expr = Cil.new_exp ~loc:(Stmt.loc stmt) (Cil_types.Lval lval) in
-        ValueAnalysis.expr_reads stmt expr
-    in
+  let rec update_on_call ctx res stmt typ lval fn args = match typ with
+    | Extern var
+      when ConcurrencyModel.is_atomic_fn var && not @@ Kernel_function.has_definition @@ Globals.Functions.get var ->
+      (* Skip external atomic functions. *)
+        res
+    | _ ->
+      let writes1 = match lval with
+        | None -> []
+        | Some lval ->
+          let expr = Cil.new_exp ~loc:(Stmt.loc stmt) (Cil_types.Lval lval) in
+          ValueAnalysis.expr_reads stmt expr
+      in
 
-    let reads2 = List.fold_left (fun acc exp ->
-      if Cil.isPointerType @@ Cil.typeOf exp then acc
-      else acc @ ValueAnalysis.expr_reads stmt exp
-    ) [] args in
+      let reads = stmt_reads stmt in
 
-    let callees = ValueAnalysis.eval_call stmt fn in
+      let callees = ValueAnalysis.eval_call stmt fn in
 
-    Racer.debug ">     Accesses on call:";
-    Racer.debug ">       - Reads (fn pointer call): %a" MemoryAddress.pp_list reads1;
-    Racer.debug ">       - Reads (pass-by-value): %a" MemoryAddress.pp_list reads2;
-    Racer.debug ">       - Writes (lval init): %a" MemoryAddress.pp_list writes1;
-    Racer.debug ">       - Callees:\n";
+      Racer.debug ">     Accesses on call:";
+      Racer.debug ">       - Reads : %a" MemoryAddress.pp_list (List.map fst reads);
+      Racer.debug ">       - Writes (lval init): %a" MemoryAddress.pp_list writes1;
+      Racer.debug ">       - Callees:\n";
 
-    let lss = stmt_lockset ctx stmt in
-    let res' = Result.update_writes stmt ctx.callstack lss res writes1 in
-    let res' = Result.update_reads stmt ctx.callstack lss res' (reads1 @ reads2) in
+      let lss = stmt_lockset ctx stmt in
+      let res' = Result.update_writes stmt ctx.callstack lss res writes1 in
+      let res' = Result.update_reads stmt ctx.callstack lss res' reads in
 
-    List.fold_left (fun acc callee ->
-      if Kernel_function.has_definition callee then compute_function ctx acc callee stmt
-      else update_on_access ctx res stmt (* We drop previously computed! *)
-    ) res' callees
+      List.fold_left (fun acc callee ->
+        if Kernel_function.has_definition callee then compute_function ctx acc callee stmt
+        else update_on_access ctx res stmt (* We drop previously computed! *)
+      ) res' callees
 
   and compute_stmt ctx res stmt =
     if Cache.mem ctx.callstack stmt then res
