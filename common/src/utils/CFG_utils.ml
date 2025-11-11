@@ -45,6 +45,25 @@ let get_malloc_line base =
   if not res then failwith ("Internal error: unexpected name of allocated base " ^ name)
   else int_of_string @@ Str.matched_group 1 name
 
+let find_allocation_stmt base =
+  let line = get_malloc_line base in
+  let stmts = filter_stmts (fun stmt ->
+    let line' = (fst @@ Stmt.loc stmt).pos_lnum in
+    Int.equal line line'
+  )
+  in
+  List.hd stmts
+
+let is_exit stmt = match stmt.skind with
+  | Instr (Call (_, e, _, _)) ->
+    begin match e.enode with
+      | Lval (Var v, NoOffset) ->
+        let kf = Globals.Functions.get v in
+        Kernel_function.has_noreturn_attr kf
+      | _ -> false
+    end
+  | _ -> false
+
 (** Find a pointer variable for which the given base was allocated. *)
 let find_allocation_target base =
   let line = get_malloc_line base in
@@ -64,3 +83,8 @@ let find_allocation_target base =
     | _ -> None
     end
   ) None stmts
+
+let rec extract_atomic_expressions expr = match expr.enode with
+  | SizeOfE e | AlignOfE e | CastE (_, e) | UnOp (_, e, _) -> extract_atomic_expressions e
+  | BinOp (_, e1, e2, _) -> extract_atomic_expressions e1 @ extract_atomic_expressions e2
+  | _ -> [expr]

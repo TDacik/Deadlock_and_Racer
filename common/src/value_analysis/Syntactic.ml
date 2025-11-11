@@ -148,4 +148,5 @@ module Self = struct
 
 end
 
+include Self
 include ValueAnalysis_builder.Make(Self)

@@ -37,7 +37,8 @@ let is_may_race threads parallel self other =
   let one_write = self.kind = Write || other.kind = Write in
   let intersects = Int_Intervals.intersects offset1 offset2 in
 
-  Racer.debug "Checking race:\n  %s\n   %s\n"
+  Racer.debug "Checking may-race on %s:\n  %s\n   %s\n"
+    (MemoryAccess.show self)
     (Callstack.show ~event:(MemoryAccess.show_kind self.kind) self.callstack)
     (Callstack.show ~event:(MemoryAccess.show_kind other.kind) other.callstack);
   Racer.debug ">  Lockset: %s x %s -> %b" (Lock.Set.show ls1) (Lock.Set.show ls2)
@@ -59,16 +60,16 @@ let is_local_malloc base =
   with _ -> false
 
 
-let is_unique_malloc access threads base = match base with
+let is_unique_malloc parallel threads base = match base with
   | Base.Allocated _ ->
-    let thread = MemoryAccess.get_thread access in
-    ThreadAnalysis.Result.is_unique threads thread
+    (** Find threads that could allocate the base and check whether
+        all of them are unique. *)
+    let stmt = CFG_utils.find_allocation_stmt base in
+    let active_threads = ParallelAnalysis.Result.may_active_stmt parallel stmt in
+    Format.printf "%s" @@ Thread.Set.show active_threads;
+    Thread.Set.cardinal active_threads == 1
+    && Thread.Set.for_all (ThreadAnalysis.Result.is_unique threads) active_threads
   | _ -> true
-
-
-let is_alloced_array base = match base with
-  | Base.Allocated (var, _, validity) -> Cil.isArrayType var.vtype
-  | _ -> false
 
 let of_accesses kind access1 access2 =
   let base = MemoryAccess.get_base access1 in
@@ -79,8 +80,8 @@ let of_accesses kind access1 access2 =
 
 let check_must_race threads parallel self other =
   let base = MemoryAccess.get_base self in
-  let is_precise = MemoryAccess.is_precise self in
-  let is_allocated_array = is_alloced_array base in
+  let is_unique = self.precise && other.precise in
+  let are_precise = MemoryAccess.is_precise self && MemoryAccess.is_precise other in
   let are_parallel =
     ParallelAnalysis.Result.must_run_in_parallel parallel self.callstack other.callstack
   in
@@ -88,21 +89,24 @@ let check_must_race threads parallel self other =
     Lock.Set.rw_disjoint (Lock.PowerSet.flatten_union self.locksets) (Lock.PowerSet.flatten_union other.locksets) 
   in
   let not_weak = not @@ Base.is_weak base in
-  let unique_malloc = is_unique_malloc self threads base in
+  let unique_malloc = is_unique_malloc parallel threads base in
 
+  Racer.debug ">> Checking must-race:\n";
   Racer.debug ">  surely parallel: %b\n" are_parallel;
-  Racer.debug ">  precise access: %b\n" is_precise;
-  Racer.debug ">  is allocted array: %b\n" is_allocated_array;
+  Racer.debug ">  precise access: %b\n" are_precise;
 
-  if (is_precise && not_weak && are_parallel && unique_malloc && locksets_disjoint) then
+  if (are_precise && is_unique && not_weak && are_parallel && unique_malloc && locksets_disjoint) then
+    let _ =Racer.debug ">>> Verdict: must\n" in
     Option.some @@ of_accesses Must self other
   else
-    let reason1 = if is_precise then None else Some "not precise" in
-    let reason2 = if not_weak then None else Some "weak" in
-    let reason3 = if are_parallel then None else Some "not parallel" in
-    let reason4 = if unique_malloc then None else Some "not unique malloc" in
-    let reason5 = if locksets_disjoint then None else Some "locksets are not must-disjoint" in
-    let reason = String.concat " & " @@ List.filter_map Fun.id [reason1; reason2; reason3; reason4; reason5] in
+    let _ = Racer.debug ">>> Verdict: may\n" in
+    let reason1 = if are_precise then None else Some "not precise" in
+    let reason2 = if is_unique then None else Some "not unique access" in
+    let reason3 = if not_weak then None else Some "weak" in
+    let reason4 = if are_parallel then None else Some "not parallel" in
+    let reason5 = if unique_malloc then None else Some "not unique malloc" in
+    let reason6 = if locksets_disjoint then None else Some "locksets are not must-disjoint" in
+    let reason = String.concat " & " @@ List.filter_map Fun.id [reason1; reason2; reason3; reason4; reason5; reason6] in
     Option.some @@ of_accesses (May reason) self other
 
 let check threads parallel a1 a2 =

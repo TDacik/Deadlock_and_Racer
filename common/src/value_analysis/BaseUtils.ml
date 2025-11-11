@@ -35,7 +35,7 @@ let is_thread_arg thread = function
 (** We cannot use the _Atomic attribute which is erased during preprocessing. We need to
     rely on encoding in the type name, e.g., atomic_int. *)
 let is_atomic = function
-  | Var (var, _) ->
+  | Var (var, _) | Allocated (var, _, _) ->
     let typ = match var.vtype with TPtr (t, _) -> t | t -> t in
     let type_name = Format.asprintf "%a" Typ.pretty typ in
     String.starts_with ~prefix:"atomic_" type_name

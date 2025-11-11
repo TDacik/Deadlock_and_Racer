@@ -35,8 +35,6 @@ end
 include Datatype.Collections(Self)
 
 let is_precise access =
-  if not access.precise then false
-  else
   let base = get_base access in
   let offset = get_offset access in
   match Int_Intervals.project_singleton offset with
