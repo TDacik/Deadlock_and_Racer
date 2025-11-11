@@ -272,6 +272,7 @@ module Make (ValueAnalysis : VALUE_ANALYSIS) = struct
         | Unlock lock -> update_on_unlock ctx res stmt lock
         | Call (Direct kf, _, callee, _)
           when ConcurrencyModel.is_atomic_fn @@ Kernel_function.get_vi kf ->
+            Imprecision.add (AtomicFnWithBody kf);
             let lockset = Lock.Set.add (Lock.global_lock ()) ctx.lockset in
             update_on_call ~atomic:true {ctx with lockset} res stmt callee
         | Call (_, _, callee, _) -> update_on_call ctx res stmt callee

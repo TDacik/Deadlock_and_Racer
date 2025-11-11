@@ -8,9 +8,9 @@ open Imprecision
 let run res =
   let filter =
     if RaceAnalysis.Result.is_race_free res then
-      (function (FunctionPointer _ | Unlock _ (* | Backend _*)) -> true | _ -> false)
+      (function (FunctionPointer _ | Unlock _) -> true | _ -> false)
     else if RaceAnalysis.Result.has_must_race res then
-      (function (FunctionPointer _ | Unlock _ | Backend _ | AtomicFnWithBody _) -> false | _ -> true)
+      (function (FunctionPointer _ | Unlock _ | Backend _) -> false | _ -> true)
     else (function _ -> true)
    in
    Imprecision.report filter
