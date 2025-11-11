@@ -139,7 +139,7 @@ module Make (ValueAnalysis : ValueAnalysis_sig.VALUE_ANALYSIS) = struct
 
   let update_on_create ctx stmt id children arg =
     let children = ValueAnalysis.eval_fn_pointer stmt children in
-    let children = List.map Thread.mk children in
+    let children = List.map (Thread.mk ~stmt) children in
     Context.update (fun active ->
       Thread.Powerset.concat_map (fun set ->
         Thread.Powerset.of_list @@ List.map (fun t ->
@@ -181,11 +181,19 @@ module Make (ValueAnalysis : ValueAnalysis_sig.VALUE_ANALYSIS) = struct
         | Call (_, _, fn, _) -> update_on_call ctx stmt fn
         | _ -> ctx
       in
+      let succs = match stmt.skind with
+        (*| If (e, then_b, else_b, _) ->
+          let v = ValueAnalysis.eval_expr ~callstack:ctx.callstack stmt e in
+          if not @@ Cvalue.V.contains_zero v then [List.nth stmt.succs 0]
+          else if not @@ Cvalue.V.contains_non_zero v then [List.nth stmt.succs 1]
+          else stmt.succs*)
+        | _ -> stmt.succs
+      in
       let ctx'' = Context.mk_stmt_summary ctx' stmt in
       List.fold_left (fun acc succ ->
         let ctx' = compute_stmt ctx'' succ in
         Context.join acc ctx'
-      ) ctx'' stmt.succs
+      ) ctx'' succs
 
   and compute_function ctx fn stmt =
     if not @@ Kernel_function.has_definition fn then ctx
@@ -239,6 +247,17 @@ module Result = struct
   include Context
 
   let active_threads res cs = M.find cs res.results
+
+  let may_active_threads res cs = Thread.Powerset.flatten_union @@ M.find cs res.results
+
+  let must_active_threads res cs = Thread.Powerset.flatten_inter @@ M.find cs res.results
+
+  let may_active_stmt res stmt =
+    let open Cil_datatype in
+    let open Callstack in
+    M.to_list res.results
+    |> List.filter (fun (cs, _) -> Stmt.equal (Option.get cs.event) stmt)
+    |> List.fold_left (fun acc (_, res) -> Thread.Set.union acc @@ Thread.Powerset.flatten_union res) Thread.Set.empty
 
   let parallel_aux flatten res cs1 cs2 =
     let thread1 = Callstack.get_thread cs1 in

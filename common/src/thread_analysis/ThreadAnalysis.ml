@@ -99,7 +99,7 @@ module Make (ValueAnalysis : VALUE_ANALYSIS) = struct
   let update_on_create ctx res stmt tid entry_point arg =
     let escaped_bases = List.map fst @@ ValueAnalysis.eval_expr_concretised stmt arg in
     let children = ValueAnalysis.eval_fn_pointer stmt entry_point in
-    let children = List.map Thread.mk children in
+    let children = List.map (Thread.mk ~stmt) children in
 
     (if not @@ Cil.isScalarType @@ Cil.typeOf arg then
       Imprecision.add (ThreadParamArray (stmt))

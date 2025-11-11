@@ -30,7 +30,9 @@ module Powerset : Powerset_sig.POWERSET
   with type elt := t
    and type set := Set.t
 
-val mk : ?is_main:bool -> Kernel_function.t -> t
+val mk : ?is_main:bool -> ?stmt:Cil_datatype.Stmt.t -> Kernel_function.t -> t
+
+val get_name : t -> string
 
 val get_entry_point : t -> Kernel_function.t
 

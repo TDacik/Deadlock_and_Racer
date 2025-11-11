@@ -99,6 +99,12 @@ module ContextDepth = Self.Int
     let default = 1
   end)
 
+module ThreadSensitive = Self.True
+  (struct
+    let option_name = "-cc-thread-sensitive"
+    let help = "Distinguish threads created at different statements"
+  end)
+
 module OriginalSources = Self.Filepath_list
   (struct
     let option_name = "-cc-orig-sources"

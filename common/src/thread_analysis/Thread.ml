@@ -51,12 +51,18 @@ end
 
 type t = {
   entry_point : Kernel_function.t;
+  stmt : Cil_datatype.Stmt.t option;
   is_main : bool;
 }
 
-let show t = Format.asprintf "%a" Kernel_function.pretty t.entry_point
+let show t = match t.stmt with
+  | None -> Format.asprintf "%a" Kernel_function.pretty t.entry_point
+  | Some s -> Format.asprintf "%a:%d" Kernel_function.pretty t.entry_point (Print_utils.stmt_line s)
 
-let compare t1 t2 = Kernel_function.compare t1.entry_point t2.entry_point
+let compare t1 t2 =
+  let aux = Kernel_function.compare t1.entry_point t2.entry_point in
+  if aux <> 0 then aux
+  else Option.compare Cil_datatype.Stmt.compare t1.stmt t2.stmt
 
 module Self = struct
   type nonrec t = t
@@ -65,19 +71,21 @@ module Self = struct
 end
 
 include Datatype.Printable(Self)
+include Datatype.Comparable(Self)
 include Datatype.Collections(Self)
 
 module Powerset = Powerset.Make(Set)
 
-let mk ?(is_main=false) entry_point = {
+let mk ?(is_main=false) ?stmt entry_point = {
   entry_point = entry_point;
+  stmt = if Core0.ThreadSensitive.get () then stmt else None;
   is_main = is_main;
 }
+
+let get_name t = Format.asprintf "%a" Kernel_function.pretty t.entry_point
 
 let get_entry_point t = t.entry_point
 
 let is_main t = t.is_main
-
-let equal t1 t2 = Kernel_function.equal t1.entry_point t2.entry_point
 
 let hash t = Kernel_function.hash t.entry_point
