@@ -10,16 +10,6 @@ def check(content):
                 print("unsupported: semaphore")
                 exit(10)
 
-            if ("__verifier_atomic" in line) or ("__VERIFIER_atomic" in line):
-                if (not "__verifier_atomic_begin" in line) and (
-                    not "__verifier_atomic_end" in line
-                ):
-                    if (not "__VERIFIER_atomic_begin" in line) and (
-                        not "__VERIFIER_atomic_end" in line
-                    ):
-                        print("unsupported atomic functions:", line)
-                        exit(11)
-
 
 def check_sources(source_files):
     acc = []

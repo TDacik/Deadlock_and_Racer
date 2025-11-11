@@ -104,8 +104,7 @@ class Runner:
         source_file_over = transform_over_approx(self, source_file, options)
         options = options + [
             "-cc-thread-approx=over",
-            "-cc-orig-sources",
-            orig_source_file,
+            f"-cc-orig-sources={orig_source_file}",
         ]
         return self.run_racer_once(source_file_over, options)
 
@@ -113,8 +112,7 @@ class Runner:
         source_file_under = transform_under_approx(self, source_file, options)
         options = options + [
             "-cc-thread-approx=under",
-            "-cc-orig-sources",
-            orig_source_file,
+            f"-cc-orig-sources={orig_source_file}",
         ]
         return self.run_racer_once(source_file_under, options)
 
@@ -124,13 +122,13 @@ class Runner:
             print(res.stdout)
             return res.returncode
         elif args.under_approx:
-            res = self.run_under_approx(source_file, optionsm, orig_source_file)
+            res = self.run_under_approx(source_file, options, orig_source_file)
             print(res.stdout)
             return res.returncode
         else:  # Run both
             res1 = self.run_over_approx(source_file, options, orig_source_file)
-            print(res1.stdout)  # TODO: stderr?
             if "[racer] Data race " not in str(res1.stdout):
+                print(res1.stdout)  # TODO: stderr?
                 return res1.returncode
 
             self.log("Over-approximation was inconclusive\n")

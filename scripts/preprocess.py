@@ -51,16 +51,42 @@ translation = [
 
 
 # Frama-C does not support variable length arrays at non-final fields. We replace them by
-# arrays of constant size 2**32.
+# arrays of small constant size.
 #
 # We need to be careful to do not modify array accesses.
 translation_re = [
     (
         r" *(?:unsigned|signed){0,1}\s*(?:char|int|short|long|long long|float|double|void|struct)[^;=\)\(]*\s*\[0U{0,1}\] *;",
         r"0U{0,1}",
-        f"{(2**32)-1}",
+        f"{10}",
     ),
 ]
+
+gcc_overloaded_fns = [
+    "__atomic_load_n",
+    "__atomic_load",
+    "__atomic_store_n",
+    "__atomic_store",
+    "__atomic_exchange_n"
+    "__atomic_exchange",
+    "__atomic_compare_exchange_n",
+    "__atomic_compare_exchange",
+    "__atomic_add_fetch",
+    "__atomic_sub_fetch",
+    "__atomic_and_fetch",
+    "__atomic_xor_fetch",
+    "__atomic_or_fetch",
+    "__atomic_nand_fetch",
+    "__atomic_fetch_add",
+    "__atomic_fetch_sub",
+    "__atomic_fetch_and",
+    "__atomic_fetch_xor",
+    "__atomic_fetch_or",
+    "__atomic_fetch_nand",
+    "__atomic_test_and_set",
+    "__atomic_clear"
+]
+
 
 
 def preprocess(orig_path, lines):
@@ -85,6 +111,18 @@ def preprocess(orig_path, lines):
                     )
                     new_line = re.sub(pattern, target, new_line)
                     print("  ==> ", new_line, end="")
+
+            # Remove overloading
+            # cnt = 0
+            # for fn in gcc_overloaded_fns:
+            #    pattern = re.compile(r".*" + fn + r"\(.*\);")
+            #    m = re.match(pattern, new_line)
+            #    if m is not None:
+            #        fn_new = fn + "_" + str(cnt)
+            #        cnt +=1
+            #        print(fn, " ==> ", fn_new)
+            #        new_line = new_line.replace(fn, fn_new)
+
 
         res.append(new_line)
 
