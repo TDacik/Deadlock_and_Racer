@@ -78,6 +78,14 @@ class Runner:
             "-kernel-warn-key=*=inactive",
         ]
 
+        default = [
+            "-eva-precision=0",
+            "-eva-context-depth=1",
+            "-eva-context-width=1",
+            "-absolute-valid-range=0-32",
+            "-no-warn-signed-overflow",
+        ]
+
         cmd = [
             self.framac_path,
             f'-cpp-extra-args="-include'
@@ -91,6 +99,7 @@ class Runner:
             "-racer-witness-path=witness.graphml",
             *silent_kernel,
             *options,
+            *default,
             source_file,
         ]
 
