@@ -81,20 +81,17 @@ module Result = struct
 
   let is_precise_update stmt accesses =
     let is_ptr (t : Cil_types.typ) = match t with TPtr _ -> true | _ -> false in
-    List.map MemoryAddress.base accesses
-    |> (fun b ->
-        List.length b <= 1
-        || List.for_all (fun (b1, b2) ->
-             let v1 = Base.to_varinfo b1 in
-             let v2 = Base.to_varinfo b2 in
-             Base.equal b1 b2
-             || (not @@ Typ.equal v1.vtype v2.vtype)
-           ) (BatList.cartesian_product b b)
-       )
+    let bases = List.map MemoryAddress.base accesses in
+    List.length bases <= 1
+    || List.for_all (fun (b1, b2) ->
+       let v1 = Base.to_varinfo b1 in
+       let v2 = Base.to_varinfo b2 in
+       Base.equal b1 b2
+       || (not @@ Typ.equal v1.vtype v2.vtype)
+     ) (BatList.cartesian_product bases bases)
 
   let update_reads stmt callstack lockset res accesses =
-    let precise = is_precise_update stmt accesses in
-    List.map (fun a -> MemoryAccess.mk_read stmt a lockset callstack precise) accesses
+    List.map (fun (a, precise) -> MemoryAccess.mk_read stmt a lockset callstack precise) accesses
     |> List.fold_left update_one res
 
   let update_writes stmt callstack lockset res accesses =
@@ -106,7 +103,7 @@ module Result = struct
   let ranking = function
     | [] -> []
     | races ->
-      try [List.find Race.is_write_write races]
+      try [List.find (fun race -> race.Race.kind = Race.Must) races ]
       with Not_found -> [List.hd races]
 
   let has_must_race res = List.exists (fun race -> race.Race.kind = Race.Must) res.races
