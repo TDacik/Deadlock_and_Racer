@@ -16,7 +16,6 @@ def transformation(config, name, source_file, options, header=""):
     path = Path(source_file)
     suffix = f".{name}.c"
 
-    print(path.stem)
     tmp_file = NamedTemporaryFile(
         prefix=path.stem, suffix=suffix, delete=False, dir="/tmp"
     )
