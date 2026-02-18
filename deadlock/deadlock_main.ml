@@ -35,7 +35,7 @@ let main () =
 
   report lockset_res deadlocks;
 
-  Postprocessing.run deadlocks;
+  DeadlockPostprocessing.run deadlocks;
 
   if not @@ Deadlock.JsonOutput.is_default () then
     DeadlockAnalysis.Result.out_json deadlocks @@ Deadlock.JsonOutput.get ()
