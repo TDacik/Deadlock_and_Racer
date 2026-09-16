@@ -4,7 +4,7 @@
 
 open Cil_datatype
 
-type concrete := Base.t * Integer.t
+type concrete := Base.t * Z.t
 
 module type VALUE_ANALYSIS_BASE = sig
 
@@ -22,7 +22,7 @@ module type VALUE_ANALYSIS_BASE = sig
 
   val stmt_state : ?after:bool -> ?callstack:Callstack.t -> Stmt.t -> Cvalue.Model.t
 
-  val eval_call : Stmt.t -> Exp.t -> Kernel_function.t list
+  val eval_call : Stmt.t -> Cil_types.lhost -> Kernel_function.t list
   (** Evaluate what is called by a non-trivial expression. *)
 
   val eval_fn_pointer : Stmt.t -> Exp.t -> Kernel_function.t list

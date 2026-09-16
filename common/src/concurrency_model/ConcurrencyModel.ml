@@ -30,13 +30,13 @@ type stmt =
   | Atomic_seq_end
   | Atomic_call of Exp.t * Exp.t list
 
-  | Call of call_type * Lval.t option * Exp.t * Exp.t list
+  | Call of call_type * Lval.t option * Cil_types.lhost * Exp.t list
 
   | Return
   | Other
 
 let classify_call ?lval fn args =
-  let fn_name = Format.asprintf "%a" Printer.pp_exp fn in
+  let fn_name = Format.asprintf "%a" Printer.pp_lhost fn in
 
   if Lock_functions.mem fn_name then
     let pos, kind = Lock_functions.find fn_name in
@@ -85,15 +85,11 @@ let classify_call ?lval fn args =
   *)
 
   else
-    let call_type = match fn.enode with
-      | Lval lval -> begin match fst lval with
-        | Var var -> begin
-            try let kf = Globals.Functions.get var in Direct kf
-            with Not_found -> Extern var
-          end
-        | Mem expr -> Pointer (expr)
-      end
-    | _ -> assert false
+    let call_type = match fn with
+      | Var var ->
+        (try let kf = Globals.Functions.get var in Direct kf
+        with Not_found -> Extern var)
+      | Mem expr -> Pointer expr
     in
     Call (call_type, lval, fn, args)
 
@@ -106,9 +102,7 @@ let classify_instr instr =
   | Local_init (_, init, _) ->
     begin match init with
     | AssignInit _ -> Other
-    | ConsInit (varinfo, args, _) ->
-      let fn = Cil.evar varinfo in
-      classify_call fn args
+    | ConsInit (varinfo, args, _) -> classify_call (Var varinfo) args
     end
   | _ -> Other
 

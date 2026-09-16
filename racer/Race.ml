@@ -56,7 +56,7 @@ let is_may_race threads parallel self other =
 let is_local_malloc base =
   try
     let var = Option.get @@ CFG_utils.find_allocation_target base in
-    Cil.isPointerType var.vtype && not @@ var.vglob
+    Ast_types.is_ptr var.vtype && not @@ var.vglob
   with _ -> false
 
 
@@ -85,8 +85,8 @@ let check_must_race threads parallel self other =
   let are_parallel =
     ParallelAnalysis.Result.must_run_in_parallel parallel self.callstack other.callstack
   in
-  let locksets_disjoint = 
-    Lock.Set.rw_disjoint (Lock.PowerSet.flatten_union self.locksets) (Lock.PowerSet.flatten_union other.locksets) 
+  let locksets_disjoint =
+    Lock.Set.rw_disjoint (Lock.PowerSet.flatten_union self.locksets) (Lock.PowerSet.flatten_union other.locksets)
   in
   let not_weak = not @@ Base.is_weak base in
   let unique_malloc = is_unique_malloc parallel threads base in

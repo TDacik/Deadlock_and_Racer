@@ -101,7 +101,7 @@ module Make (ValueAnalysis : VALUE_ANALYSIS) = struct
     let children = ValueAnalysis.eval_fn_pointer stmt entry_point in
     let children = List.map (Thread.mk ~stmt) children in
 
-    (if not @@ Cil.isScalarType @@ Cil.typeOf arg then
+    (if not @@ Ast_types.is_scalar @@ Cil.typeOf arg then
       Imprecision.add (ThreadParamArray (stmt))
     );
 

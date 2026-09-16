@@ -52,10 +52,7 @@ module ThreadApproximation = Self.Enum
 
     type t = [`Under | `Over]
     let default = `Under
-    let all_values = [`Under; `Over]
-    let to_string = function
-      | `Under -> "under"
-      | `Over -> "over"
+    let values = [`Under, "under"; `Over, "over"]
    end)
 
 module ValueAnalysisType = Self.Enum
@@ -66,11 +63,7 @@ module ValueAnalysisType = Self.Enum
 
     type t = [`Syntactic | `Alias | `Eva]
     let default = `Eva
-    let all_values = [`Syntactic; `Alias; `Eva]
-    let to_string = function
-      | `Syntactic -> "syntactic"
-      | `Alias -> "alias"
-      | `Eva -> "eva"
+    let values = [`Syntactic, "syntactic"; `Alias, "alias"; `Eva, "eva"]
    end)
 
 module Inline = Self.False

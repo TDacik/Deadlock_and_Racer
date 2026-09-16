@@ -46,8 +46,8 @@ module Self = struct
       (String.concat ", " @@ List.map (fun f -> Format.asprintf "%a" Kernel_function.pretty f) res);
     res
 
-  let eval_call _ expr =
-    let name = trim @@ Format.asprintf "%a" Printer.pp_exp expr in
+  let eval_call _ lhost =
+    let name = trim @@ Format.asprintf "%a" Printer.pp_lhost lhost in
     try [Globals.Functions.find_def_by_name name]
     with Not_found -> ValueAnalysis_utils.all_referenced_fns ()
 
@@ -87,7 +87,7 @@ module Self = struct
   let extract_offset lval = match snd lval with
     | Field (field, NoOffset) ->
       let start, width = Cil.fieldBitsOffset field in
-      let start, stop = Integer.of_int start, Integer.of_int (start + width - 1) in
+      let start, stop = Z.of_int start, Z.of_int (start + width - 1) in
       Int_Intervals.inject_bounds start stop
     | NoOffset | Index _ | Field (_, _) -> Int_Intervals.top
 
@@ -120,7 +120,7 @@ module Self = struct
       | [o] -> List.map (fun b -> (b, o)) bases
 
   let concretise_zone zone =
-    Locations.Zone.fold_i (fun base offsets acc ->
+    Memory_zone.fold_i (fun base offsets acc ->
       if Int_Intervals.is_top offsets then acc
       else (base, offsets) :: acc
     ) zone []

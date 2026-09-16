@@ -18,7 +18,7 @@ let get_files () =
     else orig_files
   in
   files
-  |> List.map (fun path -> Format.asprintf "%a" Filepath.Normalized.pretty path)
+  |> List.map (fun path -> Format.asprintf "%a" Filepath.pretty_abs path)
   |> List.filter (fun s -> not @@ String.ends_with s ~suffix:".h")
 
 let get_file_hashes () =

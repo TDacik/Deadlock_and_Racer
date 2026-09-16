@@ -80,7 +80,7 @@ module Result = struct
     `Assoc ["deadlocks", `List (List.map Deadlock.to_json dls)]
 
   let out_json res filepath =
-    let file = Format.asprintf "%a" Frama_c_kernel.Filepath.Normalized.pp_abs filepath in
+    let file = Format.asprintf "%a" Frama_c_kernel.Filepath.pretty_abs filepath in
     let channel = open_out_gen [Open_creat; Open_wronly] 0o666 file in
     Yojson.Basic.(pretty_to_channel channel (to_json res));
     close_out channel

@@ -7,7 +7,7 @@ open ConcurrencyModel_types
 type t = {
   base: Base.t;
   kind: LockKind.t;
-  offset: Integer.t;
+  offset: Z.t;
   status: Cil_types.lval Option.t;
   callstack: Callstack.t Option.t;
 }
@@ -19,7 +19,7 @@ val global_lock : unit -> t
 
 val hash : t -> int
 
-val mk : ?callstack:Callstack.t -> ?kind:LockKind.t -> ?status:Cil_types.lval -> Base.t -> Integer.t -> t
+val mk : ?callstack:Callstack.t -> ?kind:LockKind.t -> ?status:Cil_types.lval -> Base.t -> Z.t -> t
 
 val get_callstack : t -> Callstack.t
 

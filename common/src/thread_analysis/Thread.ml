@@ -10,8 +10,8 @@ module InitialState = struct
     try
       let varinfo = Base.to_varinfo base in
       Base.is_global base &&
-      not (Cil.hasAttribute "fc_stdlib" varinfo.vattr
-           || Cil.hasAttribute "fc_stdlib_generated" varinfo.vattr)
+      not (Ast_attributes.contains "fc_stdlib" varinfo.vattr
+           || Ast_attributes.contains "fc_stdlib_generated" varinfo.vattr)
       with Base.Not_a_C_variable -> false
 
   (* Comparison module generated bases. TODO: why is this needed for fixpoint termination? *)

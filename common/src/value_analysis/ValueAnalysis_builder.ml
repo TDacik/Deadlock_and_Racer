@@ -19,21 +19,21 @@ module Make (B : VALUE_ANALYSIS) = struct
 
   let eval_expr_concretised ?callstack stmt expr = match expr.enode with
     (* Simple access to non-pointer variable *)
-    | AddrOf (Var var, NoOffset) when not @@ Cil.isPointerType var.vtype ->
-      [Base.of_varinfo var , Integer.of_int 0]
+    | AddrOf (Var var, NoOffset) when not @@ Ast_types.is_ptr var.vtype ->
+      [Base.of_varinfo var , Z.of_int 0]
     | _ -> begin match callstack with
       | None -> B.eval_expr_concretised stmt expr
       | Some callstack -> B.eval_expr_concretised ~callstack stmt expr
     end
 
-  let eval_call stmt expr =
-    Logger.debug "Evaluating call: %a" Exp.pretty expr;
+  let eval_call stmt lhost =
+    Logger.debug "Evaluating call: %a" Printer.pp_lhost lhost;
     let res = match ConcurrencyModel.classify_stmt stmt with
       | Call (Direct kf, _, _, _ ) -> [kf]
       | Call (Pointer ptr, _, _, _) ->
         if Core0.OverApproxFunctionPointers.get () then all_referenced_fns ()
-        else B.eval_fn_pointer stmt expr
-      | _ -> B.eval_call stmt expr
+        else B.eval_fn_pointer stmt ptr
+      | _ -> B.eval_call stmt lhost
     in
     List.iter (fun f -> Logger.debug ">  %a" Kernel_function.pretty f) res;
     res

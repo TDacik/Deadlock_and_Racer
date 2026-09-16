@@ -40,11 +40,11 @@ let is_precise access =
   match Int_Intervals.project_singleton offset with
     | Some (x, y) ->
       begin match Base.typeof base with
-        | Some typ when Cil.isArrayType typ ->
-          let size = Integer.of_int @@ Cil.bitsSizeOf @@ Cil.typeOf_array_elem typ in
-          let diff = Integer.sub y x in
-          Racer.debug "Base %a : size: %s, diff: %s" Base.pretty base (Integer.to_string size) (Integer.to_string diff);
-          Integer.ge size diff && access.precise
+        | Some typ when Ast_types.is_array typ ->
+          let size = Z.of_int @@ Cil.bitsSizeOf @@ Ast_types.direct_element_type typ in
+          let diff = Z.sub y x in
+          Racer.debug "Base %a : size: %s, diff: %s" Base.pretty base (Z.to_string size) (Z.to_string diff);
+          Z.(<) size diff && access.precise
         | _ -> true
       end
     | None -> false

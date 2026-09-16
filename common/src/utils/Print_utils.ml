@@ -4,7 +4,6 @@
 
 open Cil_types
 open Cil_datatype
-open Filepath
 
 let get_time () = Format.asprintf "(%.2f)" (Sys.time ())
 
@@ -12,13 +11,14 @@ let get_time () = Format.asprintf "(%.2f)" (Sys.time ())
 let is_orig base =
   try
     let varinfo = Base.to_varinfo base in
-    not (Cil.hasAttribute "fc_stdlib" varinfo.vattr
-         || Cil.hasAttribute "fc_stdlib_generated" varinfo.vattr)
+    not (Ast_attributes.contains "fc_stdlib" varinfo.vattr
+         || Ast_attributes.contains "fc_stdlib_generated" varinfo.vattr)
   with Base.Not_a_C_variable -> false
 
 let stmt_line stmt =
-  let loc = Stmt.loc stmt in
-  (fst loc).pos_lnum
+  Stmt.loc stmt
+  |> fst (*Fileloc.start_pos loc *)
+  |> Filepos.line
 
 let pretty_stmt_loc fmt stmt =
   let stmt_short = match stmt.skind with
@@ -33,7 +33,7 @@ let pretty_stmt_loc fmt stmt =
 
 let aux_file_line stmt =
   Stmt.loc stmt
-  |> Format.asprintf "%a" Printer.pp_location
+  |> Format.asprintf "%a" Fileloc.pretty
   |> String.split_on_char '/'
   |> BatList.last
 
@@ -41,9 +41,12 @@ let pretty_stmt_short fmt stmt =
   Format.fprintf fmt "%s" (aux_file_line stmt)
 
 let descr_stmt stmt =
-  let loc = Stmt.loc stmt in
-  let path = (fst loc).pos_path in
-  (Format.asprintf "%a" Filepath.Normalized.pretty path, stmt_line stmt)
+  let path =
+    Stmt.loc stmt
+    |> fst (*Fileloc.start_pos loc *)
+    |> Filepos.path
+  in
+  (Format.asprintf "%a" Filepath.pretty path, stmt_line stmt)
 
 
 module Make(Plugin : Plugin.General_services) = struct

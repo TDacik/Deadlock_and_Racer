@@ -2,7 +2,7 @@ open ValueAnalysis_sig
 
 include Core0
 
-module Path = Frama_c_kernel.Filepath.Normalized
+module Path = Frama_c_kernel.Filepath
 
 let value_analysis () = match ValueAnalysisType.get () with
   | `Syntactic -> (module Syntactic : VALUE_ANALYSIS)
@@ -14,14 +14,14 @@ let get_paths () =
   match paths with
   | [] ->
     let dir = Share.get_dir "models" in
-    let dir_path = Format.asprintf "%a" Path.pp_abs dir in
+    let dir_path = Format.asprintf "%a" Path.pretty_abs dir in
     let models = Array.to_list @@ Sys.readdir dir_path in
     List.map (fun f -> Share.get_file @@ "models/" ^ f) models
   | _ -> paths
 
 let load_models () =
   get_paths ()
-  |> List.map (fun f -> Format.asprintf "%a" Path.pp_abs f)
+  |> List.map (fun f -> Format.asprintf "%a" Path.pretty_abs f)
   |> List.iter ConcurrencyModel_load.load
 
 let add_builtins () = ()

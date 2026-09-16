@@ -36,18 +36,17 @@ let is_thread_arg thread = function
     rely on encoding in the type name, e.g., atomic_int. *)
 let is_atomic = function
   | Var (var, _) | Allocated (var, _, _) ->
-    let typ = match var.vtype with TPtr (t, _) -> t | t -> t in
+    let typ = match var.vtype.tnode with TPtr t -> t | _ -> var.vtype in
     let type_name = Format.asprintf "%a" Typ.pretty typ in
     String.starts_with ~prefix:"atomic_" type_name
   | _ -> false
 
 let is_thread_local base =
-  let is_thread_local_attr = function Attr ("thread", []) -> true | _ -> false in
   match base with
-    | Var (var, _) -> List.exists is_thread_local_attr var.vattr
+    | Var (var, _) -> Ast_attributes.contains "thread" var.vattr
     | Allocated (var, _, _) ->
       begin match CFG_utils.find_allocation_target base with
-      | Some var ->  List.exists is_thread_local_attr var.vattr
+      | Some var -> Ast_attributes.contains "thread" var.vattr
       | None -> false
       end
     | _ -> false

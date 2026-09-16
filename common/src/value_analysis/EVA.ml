@@ -6,7 +6,6 @@
 
 open Cil_types
 open Cil_datatype
-open Locations
 
 module Analysis = Eva.Analysis
 module Old = Eva.Eva_results
@@ -89,18 +88,18 @@ module Self = struct
 
   (* TODO: Select first n values if loc is too big *)
   let concretise loc =
-    Logger.debug "Concretizing locations %a" Location_Bytes.pretty loc;
+    Logger.debug "Concretizing locations %a" Addresses.Bytes.pretty loc;
     match loc with
     | Top (Base.SetLattice.Top, _) ->
-      [Base.null, Integer.zero;
-       Base.null, Integer.one;
-       Base.null, Integer.two]
+      [Base.null, Z.zero;
+       Base.null, Z.one;
+       Base.null, Z.of_int 2]
     | Top (s, _) ->
       Base.SetLattice.fold List.cons s []
       |> BatList.take 3
-      |> List.map (fun b -> (b, Integer.zero))
+      |> List.map (fun b -> (b, Z.zero))
     | _ ->
-        let seq = Location_Bytes.to_seq_i loc in
+        let seq = Addresses.Bytes.to_seq_i loc in
         let elems = List.of_seq @@ Seq.take 3 seq in
         let res = List.fold_left (fun acc (b, ival) ->
           let offsets = List.of_seq @@ Seq.take 3 @@ Ival.to_int_seq ival in
@@ -111,12 +110,12 @@ module Self = struct
         let res = BatList.take 3 res in
         Logger.debug "  Concretised to (%d):" (List.length res);
         List.iter (fun (base, o) ->
-          Logger.debug "  > (%a, %s)" Base.pretty base (Integer.to_string o)
+          Logger.debug "  > (%a, %s)" Base.pretty base (Z.to_string o)
         ) res;
         res
 
         (*
-        Location_Bytes.fold_i (fun base offsets acc ->
+        Addresses.Bytes.fold_i (fun base offsets acc ->
           let ints = Ival.fold_int List.cons offsets [] in
           let xs = List.map (fun i -> (base, i)) ints in
           xs @ acc
@@ -124,7 +123,7 @@ module Self = struct
         *)
 
   let concretise_zone zone =
-    try Locations.Zone.fold_i (fun base offsets acc ->
+    try Memory_zone.fold_i (fun base offsets acc ->
       if Int_Intervals.is_top offsets then acc
       else (base, offsets) :: acc
     ) zone []
@@ -155,7 +154,8 @@ module Self = struct
     |> Eva.filter_callstack (cs_pred callstack)
     |> Eva.get_cvalue_model
 
-  let eval_call stmt expr =
+  let eval_call stmt lhost =
+    let expr = ValueAnalysis_utils.lhost_to_expr lhost in
     Eva.before stmt
     |> Eva.eval_exp expr
     |> Eva.as_cvalue
@@ -166,8 +166,8 @@ module Self = struct
 
   let eval_fn_pointer stmt expr = match (Cil.stripCasts expr).enode with
     (* For some reason, EVA returns bottom for '*fn'. Thus, we strip the star. *)
-    | Lval (Mem exp, NoOffset) -> eval_call stmt exp
-    | _ -> eval_call stmt expr (* Should ever happen? *)
+    | Lval (Mem exp, NoOffset) -> eval_call stmt (Mem exp)
+    | _ -> eval_call stmt (Mem expr) (* Should ever happen? *)
 
   let get_accesses with_locals zone =
     let thread = get_active_thread () in
@@ -177,21 +177,19 @@ module Self = struct
        (** TODO: Revisit this for other backends *)
 
   let memory_accesses ?(local=false) stmt =
-    let open Locations in
     let read_zone = Inout.stmt_inputs stmt in
     let write_zone = Inout.stmt_outputs stmt in
-    Logger.debug " > Read: %a" Zone.pretty read_zone;
-    Logger.debug " > Write: %a" Zone.pretty write_zone;
+    Logger.debug " > Read: %a" Memory_zone.pretty read_zone;
+    Logger.debug " > Write: %a" Memory_zone.pretty write_zone;
 
     let reads = get_accesses local read_zone in
     let writes = get_accesses local write_zone in
     (reads, writes)
 
   let expr_reads ?(local=false) stmt expr =
-    let open Locations in
     let read_zone = Inout.expr_inputs stmt expr in
     Logger.debug "> Accesses of %a" Exp.pretty expr;
-    Logger.debug ">   Read: %a" Zone.pretty read_zone;
+    Logger.debug ">   Read: %a" Memory_zone.pretty read_zone;
     get_accesses local read_zone
 
   let check_imprecision () = ()

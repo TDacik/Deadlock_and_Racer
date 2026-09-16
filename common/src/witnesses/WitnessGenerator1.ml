@@ -94,7 +94,7 @@ let write_witness fmt metadata race =
 
 let dump_trace race filepath =
   let metadata = WitnessUtils.metadata () in
-  let file = Format.asprintf "%a" Frama_c_kernel.Filepath.Normalized.pp_abs filepath in
+  let file = Format.asprintf "%a" Frama_c_kernel.Filepath.pretty_abs filepath in
   let channel = open_out_gen [Open_creat; Open_wronly] 0o666 file in
   let fmt = Format.formatter_of_out_channel channel in
   write_witness fmt metadata race;

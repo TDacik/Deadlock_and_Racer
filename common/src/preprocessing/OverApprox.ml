@@ -14,7 +14,7 @@ let find_fundec stmt =
 
 let mk_nondet_bool loc (var : Varinfo.t) =
   let fn = Cil.emptyFunction "get_nondet" in
-  let stmt = mk_stmt (Instr (Call (Some (Cil.var var), Cil.evar fn.svar, [], loc))) in
+  let stmt = mk_stmt (Instr (Call (Some (Var var, NoOffset), (Var fn.svar), [], loc))) in
   let expr = Cil.evar var in
   (stmt, expr)
 
@@ -51,7 +51,8 @@ end
 let run () =
   Core0.debug "Overapproximation transformation";
   let var = Cil.makeGlobalVar ~source:false ~temp:true "nondet" @@ Cil.int16_t () in
-  Globals.Vars.add var {init = Some (SingleInit (Cil.zero ~loc:Location.unknown))};
+  let initinfo = {init = Some (CInit (SingleInit (Cil.zero ~loc:Fileloc.unknown)))} in
+  Globals.Vars.add var initinfo;
 
   let proj' = Frama_c_kernel.File.create_project_from_visitor "overapprox" (new visitor var) in
   Project.set_current proj';

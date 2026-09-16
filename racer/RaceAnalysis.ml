@@ -80,7 +80,7 @@ module Result = struct
     {res with states = states'}
 
   let is_precise_update stmt accesses =
-    let is_ptr (t : Cil_types.typ) = match t with TPtr _ -> true | _ -> false in
+    let is_ptr (t : Cil_types.typ) = match t.tnode with TPtr _ -> true | _ -> false in
     let bases = List.map MemoryAddress.base accesses in
     List.length bases <= 1
     || List.for_all (fun (b1, b2) ->
@@ -179,7 +179,7 @@ module Result = struct
     ]
 
   let out_json res filepath =
-    let file = Format.asprintf "%a" Frama_c_kernel.Filepath.Normalized.pp_abs filepath in
+    let file = Format.asprintf "%a" Frama_c_kernel.Filepath.pretty_abs filepath in
     let channel = open_out_gen [Open_creat; Open_wronly] 0o666 file in
     Yojson.Basic.(pretty_to_channel channel (to_json res));
     close_out channel
@@ -231,10 +231,10 @@ module Make (ValueAnalysis : VALUE_ANALYSIS) = struct
       | ConsInit (_, exps, _) -> exps
     in
     let get_reads_of_call fn args =
-      let args = List.filter (fun e -> not @@ Cil.isPointerType @@ Cil.typeOf e) args in
-      match fn.enode with
-      | Lval (Var _, _) -> args
-      | Lval (Mem fn, _) -> fn :: args
+      let args = List.filter (fun e -> not @@ Ast_types.is_ptr @@ Cil.typeOf e) args in
+      match fn with
+      | Var _ -> args
+      | Mem fn -> fn :: args
     in
     let reads = match stmt.skind with
       | Instr (Set (_, rhs, _)) -> [rhs]

@@ -41,8 +41,8 @@ let inline fst snd =
         let cond' = Visitor.visitFramacExpr (new substitution v const) cond in
         let cond'' = Cil.constFoldToInt ~machdep:true cond' in
         let res = match cond'' with
-          | Some i when Integer.is_one i -> b_then
-          | Some i when Integer.is_zero i -> b_else
+          | Some i when Z.is_one i -> b_then
+          | Some i when Z.is_zero i -> b_else
           | None -> raise Exit
         in
 

@@ -31,7 +31,7 @@ type stmt =
   | Atomic_seq_end
   | Atomic_call of Exp.t * Exp.t list
 
-  | Call of call_type * Lval.t option * Exp.t * Exp.t list
+  | Call of call_type * Lval.t option * Cil_types.lhost * Exp.t list
 
   | Return
   | Other

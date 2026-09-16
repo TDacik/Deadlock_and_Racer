@@ -8,7 +8,7 @@ open ConcurrencyModel_types.LockKind
 type t = {
   base: Base.t;
   kind: LockKind.t;
-  offset: Integer.t;
+  offset: Z.t;
   status: Cil_types.lval Option.t;
   callstack: Callstack.t Option.t;
 }
@@ -22,7 +22,7 @@ let global_lock =
       let lock = {
         base = base;
         kind = {blocking = true; read_lock = false; reentrant = true};
-        offset = Integer.zero;
+        offset = Z.zero;
         callstack = None;
         status = None;
       }
@@ -39,13 +39,13 @@ let get_callstack lock = Option.get lock.callstack
 
 let compare lock1 lock2 =
   let aux = Base.compare lock1.base lock2.base in
-  if aux <> 0 then aux else Integer.compare lock1.offset lock2.offset
+  if aux <> 0 then aux else Z.compare lock1.offset lock2.offset
 
 let equal lhs rhs = (compare lhs rhs) == 0
 
 let show lock =
-  if Integer.is_zero lock.offset then Format.asprintf "%a" Base.pretty lock.base
-  else Format.asprintf "%a[%a]" Base.pretty lock.base Integer.pretty lock.offset
+  if Z.is_zero lock.offset then Format.asprintf "%a" Base.pretty lock.base
+  else Format.asprintf "%a[%a]" Base.pretty lock.base Z.pretty lock.offset
 
 let mk ?callstack ?(kind={blocking=true; read_lock=true; reentrant=true}) ?status base offset = {
   base = base;
