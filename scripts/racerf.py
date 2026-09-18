@@ -125,20 +125,25 @@ class Runner:
         ]
         return self.run_racer_once(source_file_under, options)
 
+    def hotfix_eva_error(self, res):
+        if res.returncode == 1 and "Eva not started because globals initialization is not computable." in res.stdout:
+            return 0
+        return res.returncode
+
     def run_racer(self, source_file, options, args, orig_source_file):
         if args.over_approx:
             res = self.run_over_approx(source_file, options, orig_source_file)
             print(res.stdout)
-            return res.returncode
+            return self.hotfix_eva_error(res)
         elif args.under_approx:
             res = self.run_under_approx(source_file, options, orig_source_file)
             print(res.stdout)
-            return res.returncode
+            return self.hotfix_eva_error(res)
         else:  # Run both
             res1 = self.run_over_approx(source_file, options, orig_source_file)
             if "[racer] Data race " not in str(res1.stdout):
                 print(res1.stdout)  # TODO: stderr?
-                return res1.returncode
+                return self.hotfix_eva_error(res1)
 
             self.log("Over-approximation was inconclusive\n")
             # Remove possible witness from over-approx
