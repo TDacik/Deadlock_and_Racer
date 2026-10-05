@@ -72,9 +72,9 @@ module Inline = Self.False
     let help = "Inline trivial conditions (useful when combine with loop unfolding)"
   end)
 
-module PreprocessOnly = Self.False
+module OverApproxTransformation = Self.False
   (struct
-    let option_name = "-cc-preprocess"
+    let option_name = "-cc-over-approx"
     let help = ""
   end)
 

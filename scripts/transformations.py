@@ -56,13 +56,3 @@ def transform_under_approx(config, source_file, options):
     return transformation(
         config, "under-approximation", source_file, options + additional_options
     )
-
-
-def transform_over_approx(config, source_file, options):
-    additional_options = [
-        "-cc-preprocess",
-    ]
-    header = "__thread int nondet;\n" + "int get_nondet();\n"
-    return transformation(
-        config, "over-approximation", source_file, options + additional_options, header
-    )
