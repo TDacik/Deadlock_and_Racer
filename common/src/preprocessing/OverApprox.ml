@@ -64,7 +64,7 @@ let do_transform file =
   Cil.visitCilFileSameGlobals (new visitor fn var) file
 
 let transform file =
-  if Core0.OverApproxTransformation.get () then do_transform file
+  if Core0.NondetAssignments.get () then do_transform file
   else ()
 
 let () =
