@@ -49,7 +49,7 @@ module ExternalFunctions = False
 
 module YamlReport = Self.Filepath
   (struct
-    let option_name = "-racer-yaml-report"
+    let option_name = "-racer-report"
     let help = "Output summary of results in yaml"
     let arg_name = "path"
     let existence = Frama_c_kernel.Filepath.Indifferent
