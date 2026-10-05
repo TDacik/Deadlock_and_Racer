@@ -36,8 +36,8 @@ let main () =
 
   PostProcessing.run res;
 
-  if not @@ Racer.JsonOutput.is_default () then
-    RaceAnalysis.Result.out_json res @@ Racer.JsonOutput.get ()
+  if not @@ Racer.YamlReport.is_default () then
+    YamlReporter.output res @@ Racer.YamlReport.get ()
   else ();
 
   if not @@ Racer.SVWitnessPath.is_default () && RaceAnalysis.Result.has_must_race res then

@@ -47,13 +47,13 @@ module ExternalFunctions = False
     let help = "Report races caused by external functions"
   end)
 
-module JsonOutput = Self.Filepath
+module YamlReport = Self.Filepath
   (struct
-    let option_name = "-racer-json-output"
-    let help = "Output summary of results in json"
+    let option_name = "-racer-yaml-report"
+    let help = "Output summary of results in yaml"
     let arg_name = "path"
     let existence = Frama_c_kernel.Filepath.Indifferent
-    let file_kind = "json"
+    let file_kind = "yml"
   end)
 
 (** {2 SV-comp} *)

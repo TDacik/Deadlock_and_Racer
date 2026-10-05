@@ -152,38 +152,6 @@ module Result = struct
     | [] -> Racer.result ~level:0 "No data races found"
     | races -> List.iter (fun race -> Racer.result ~level:0 "%s" (Race.report race)) races
 
-  let to_json_access access =
-    let open MemoryAccess in
-    `Assoc [
-      "kind",     `String (MemoryAccess.show_kind access.kind);
-      "offset",   `String (Format.asprintf "%a" Int_Intervals.pretty @@ get_offset access);
-      "thread",   `String (Format.asprintf "%a" Thread.pp @@ MemoryAccess.get_thread access);
-      "stmt",     `String (Format.asprintf "%a" Print_utils.pretty_stmt_short @@ MemoryAccess.get_stmt access);
-      "locksets", `String (Format.asprintf "%a" Lock.PowerSet.pp access.locksets);
-    ]
-
-  let to_json_race race =
-    let open Race in
-    let fst, snd = race.accesses in
-    `Assoc [
-      "location", `String (Format.asprintf "%a" Base.pretty race.base);
-      "offset",   `String (Format.asprintf "%a" Int_Intervals.pretty race.offset);
-      "access 1", (to_json_access @@ fst);
-      "access 2", (to_json_access @@ snd);
-    ]
-
-
-  let to_json res =
-    `Assoc [
-      "races", `List (List.map to_json_race res.races);
-    ]
-
-  let out_json res filepath =
-    let file = Format.asprintf "%a" Frama_c_kernel.Filepath.pretty_abs filepath in
-    let channel = open_out_gen [Open_creat; Open_wronly] 0o666 file in
-    Yojson.Basic.(pretty_to_channel channel (to_json res));
-    close_out channel
-
   let filter_shared threads res =
     M.filter (fun _ (state, _) -> match state with
       | State.Shared_modified _ -> true
